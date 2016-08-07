@@ -36,9 +36,11 @@
 
 package com.simsilica.ethereal;
 
+import com.jme3.network.Client;
 import com.jme3.network.service.AbstractClientService;
 import com.jme3.network.service.ClientServiceManager;
 import com.jme3.network.util.ObjectMessageDelegator;
+
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.mathd.bits.QuatBits;
 import com.simsilica.mathd.bits.Vec3Bits;
@@ -57,7 +59,7 @@ public class EtherealClient extends AbstractClientService {
 
     private ZoneGrid grid;
     private StateReceiver stateReceiver;
-    private ObjectMessageDelegator delegator;
+    private ObjectMessageDelegator<Client> delegator;
     private ObjectStateProtocol objectProtocol;
     private Vec3i clientZoneExtents;
     private SharedObjectSpace space;
@@ -96,7 +98,7 @@ public class EtherealClient extends AbstractClientService {
         this.space = new SharedObjectSpace(objectProtocol);
         this.stateReceiver = new StateReceiver(getClient(), new LocalZoneIndex(grid, clientZoneExtents), 
                                                space);   
-        this.delegator = new ObjectMessageDelegator(stateReceiver, true);
+        this.delegator = new ObjectMessageDelegator<Client>(stateReceiver, true);
         getClient().addMessageListener(delegator, delegator.getMessageTypes());
     }
 
