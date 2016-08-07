@@ -1,0 +1,87 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        // This sucks down a lot of stuff that 'normal' users wouldn't 
+        // have and won't need anyway.
+        if( project.hasProperty('releaseUser') ) {
+            classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        }
+    }
+}
+ 
+apply plugin: 'java'
+apply plugin: 'maven'
+
+version='1.0.1'
+group='com.simsilica'
+
+ext.jmeVersion = "[3.1,)" 
+
+// Version meta-data
+ext {
+    releaseDescription = "Sim-Math ${project.version}"    
+    releaseVcsTag = "${project.name}-v${project.version}"    
+}
+
+// Project-wide meta-data
+ext {
+    bintrayLabels = ['jMonkeyEngine', 'gamedev', 'networking']
+    websiteUrl = 'https://github.com/Simsilica/SimEthereal'
+    vcsUrl = 'https://github.com/Simsilica/SimEthereal.git'
+    githubRepo = 'Simsilica/SimEthereal'
+    issueTrackerUrl = 'https://github.com/Simsilica/SimEthereal/issues'
+}
+
+compileJava {
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+repositories {
+    mavenLocal()
+    jcenter()
+}
+
+// Make sure the build file declares what it actually imports
+configurations.compile {
+    transitive = false
+}
+
+dependencies {
+    // Based on JME networking
+    compile "org.jmonkeyengine:jme3-networking:$jmeVersion" 
+    
+    // Uses SimMath for bit streaming utilities and transition buffers
+    compile "com.simsilica:sim-math:[1.0,)"
+ 
+    // Base logging   
+    compile 'org.slf4j:slf4j-api:1.7.15'    
+}
+
+
+// Configuration to produce maven-repo style -sources and -javadoc jars
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+    exclude '**/.backups' 
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+ 
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+
+// Put this at the end or it won't pick up the project.version and stuff
+if( project.hasProperty('releaseUser') ) {
+    apply plugin: 'com.jfrog.bintray'
+    apply from: 'https://raw.githubusercontent.com/Simsilica/gradle-plugins/master/simtools-release.gradle'
+}
+
+
