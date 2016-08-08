@@ -21,7 +21,7 @@ ext.jmeVersion = "[3.1,)"
 
 // Version meta-data
 ext {
-    releaseDescription = "Sim-Math ${project.version}"    
+    releaseDescription = "Sim-Ethereal ${project.version}"    
     releaseVcsTag = "${project.name}-v${project.version}"    
 }
 
