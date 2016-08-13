@@ -41,6 +41,7 @@ import com.jme3.network.serializing.Serializer;
 import com.jme3.network.service.AbstractHostedConnectionService;
 import com.jme3.network.service.HostedServiceManager;
 import com.jme3.network.util.SessionDataDelegator;
+import com.simsilica.mathd.Vec3d;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.mathd.bits.QuatBits;
 import com.simsilica.mathd.bits.Vec3Bits;
@@ -161,6 +162,15 @@ public class EtherealHost extends AbstractHostedConnectionService {
         // FIXME/TODO: send the object protocol, grid configuration, etc.
         //             to the client to avoid accidental mismatches.    
     }
+
+    /**
+     *  Called during connection setup to tell SimEthereal which tracked object
+     *  is the player and what their initial position is.  This allows the per-connection
+     *  state listener to properly find the center zone for the player. 
+     */
+    public void setConnectionObject( HostedConnection hc, Long selfId, Vec3d initialPosition ) {
+        getStateListener(hc).setSelf(selfId, initialPosition);
+    } 
 
     @Override
     public void stopHostingOnConnection( HostedConnection hc ) {        

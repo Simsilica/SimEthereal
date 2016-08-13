@@ -170,6 +170,20 @@ if( updateStartTime > nextFrameTime ) {
         pendingRemoval.clear();                            
     }
  
+    /**
+     *  Updates an entity's position in the zone space.
+     *
+     *  @param id The ID of the object that has been moved.
+     *  @param active Currently unused.  Pass 'true' or the non-sleeping state of your object
+     *          if you care to be accurate for future changes.
+     *  @param p The position of the object in world space. 
+     *  @param orientation The orientation of the object in world space.
+     *  @param bounds The 3D bounds of the object in WORLD SPACE.  This is why it's passed
+     *          every update and it allows it to change to be accurate as the object rotates and
+     *          so on.  But more importantly, it pushes the updating of the bounds to the thing
+     *          actually controlling the position which might be able to more efficiently update
+     *          it than we could internally.  
+     */
     public void updateEntity( Long id, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
  
         // If one day you are looking in here and wondering why 'id' is a Long instead of
