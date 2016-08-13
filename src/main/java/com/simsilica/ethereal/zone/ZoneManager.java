@@ -171,6 +171,13 @@ if( updateStartTime > nextFrameTime ) {
     }
  
     public void updateEntity( Long id, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
+ 
+        // If one day you are looking in here and wondering why 'id' is a Long instead of
+        // just 'long'... it's because we internally use it as a key for a bunch of things.
+        // By exposing the object version to the caller they can avoid the excessive autoboxing
+        // that would occure if we did it internally.  By projecting outward, we can even
+        // encourage the caller to also keep Long IDs and then the autoboxing never happens
+        // but at the very least, we only do it once in here.
     
         Vec3i minZone = grid.worldToZone(bounds.getMin()); 
         Vec3i maxZone = grid.worldToZone(bounds.getMax()); 
