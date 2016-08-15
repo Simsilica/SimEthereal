@@ -21,6 +21,9 @@ Version 1.1.1
 * Added a StateWriter.get/setMaxMessageSize() method(s) for controlling the MTU size used
     to calculate when messages are split.  So even if the above fix doesn't work then callers
     can effectively turn off the split behavior by setting a huge max message size.     
+* Exposed get/setMaxMessageSize() at the NetworkStateListener level so that application code
+    might set this value on its own, or even dynamically, based on application-specific
+    requirements.
 
 
 Version 1.0.1

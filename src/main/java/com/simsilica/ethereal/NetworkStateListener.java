@@ -126,6 +126,40 @@ public class NetworkStateListener implements StateListener {
         return self;
     }
 
+    /**
+     *  Sets the desired maximum message size.  Typically the ideal situation
+     *  would be to keep this under the MTU of the connection.  By default,
+     *  StateWriter estimates this as 1500 bytes.  It can vary and there is no
+     *  direct way to know.  This setting is provided for applications that want
+     *  to try changing the max message size for connections that seem to be dropping
+     *  a lot of packets.  Making this size smaller may help fall under that particular
+     *  connections MTU and thus make it more likely that a single message makes it
+     *  through since it won't need to be split by the network connection.
+     *
+     *  <p>Set this to a really large value to avoid ever splitting a frame into multiple
+     *  messages.  This may make the actual transport of the message more likely to fail
+     *  over disadvantaged comms and it may make the message take a little longer to
+     *  reach the endpoint.</p>
+     *
+     *  <p>Notes on MTU and why this setting exists: for a particular connection there
+     *  is a maximum message transmit unit size over which a UDP message will be split and
+     *  reassembled.  If any of the parts of that UDP message fail to arrive then the
+     *  message is discarded completely.  SimEthereal attempts to keep its own messages
+     *  under a theoretical MTU size (by default 1500) in order to avoid this splitting.
+     *  We trade calculation time and complexity for (hopefully) a higher likelihood that
+     *  our messages make it there and in a timely manner (split UDP packets are only
+     *  as fast as their slowest part, after all).  Even if one of our self-split messages
+     *  makes it then at least you get a partial frame update.  If part of the UDP fails
+     *  to make it then you get nothing.</p>   
+     */
+    public void setMaxMessageSize( int max ) {
+        stateWriter.setMaxMessageSize(max);
+    }
+    
+    public int getMaxMessageSize() {
+        return stateWriter.getMaxMessageSize();
+    }
+    
     @Override
     public boolean hasChangedZones() {
         return zonesChanged;
