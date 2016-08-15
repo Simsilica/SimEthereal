@@ -14,7 +14,7 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'maven'
 
-version='1.1.1-SNAPSHOT'
+version='1.1.1'
 group='com.simsilica'
 
 ext.jmeVersion = "[3.1,)" 
