@@ -129,7 +129,7 @@ public class LocalZoneIndex {
         }
         int index = zoneId - minZoneId;
         if( index >= keyIndex.length ) {
-            throw new IllegalArgumentException("ZoneID out of bounds:" + zoneId);
+            throw new IllegalArgumentException("ZoneID out of bounds:" + zoneId + " keyIndex size:" + keyIndex.length);
         }
         return keyIndex[index];
     }
