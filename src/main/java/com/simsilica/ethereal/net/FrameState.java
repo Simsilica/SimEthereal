@@ -108,7 +108,7 @@ public class FrameState {
             split++; 
         }
         if( split == 0 || split == states.size() ) {
-            throw new RuntimeException( "Error splitting message. split:" + split );
+            throw new RuntimeException( "Error splitting message. split:" + split + " limit:" + limit);
         }
         long leftOverBits = estimatedBitSize - size;
         
