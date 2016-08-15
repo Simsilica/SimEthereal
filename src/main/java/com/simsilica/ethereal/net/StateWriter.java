@@ -95,6 +95,22 @@ public class StateWriter {
         this.conn = conn;
         this.objectProtocol = objectProtocol;   
     }
+    
+    /**
+     *  Sets the desired maximum message size.  Typically the ideal situation
+     *  would be to keep this under the MTU of the connection.  By default,
+     *  StateWriter estimates this as 1500 bytes.  It can vary and there is no
+     *  direct way to know.
+     *  Set this to a really large value to avoid ever splitting messages.
+     */
+    public void setMaxMessageSize( int max ) {
+        this.mtu = max;
+        this.bufferSize = mtu - UDP_HEADER - SM_HEADER; // 8 bytes of slop for internal protocol
+    }
+    
+    public int getMaxMessageSize() {
+        return mtu;
+    }     
 
     public SentState ackSentState( int messageId ) {
     
@@ -258,6 +274,10 @@ public class StateWriter {
         //      -write as much of frame as we can
         FrameState frame = currentFrame;
         while( frame != null ) {
+            // If there were already frames queued to go then we need
+            // to close them out and send them.  This frame won't fit in 
+            // the message as is and we'd like to avoid splitting it if we can.
+            // So we close this message out and start a new one... and hope it fits.
             if( !outbound.frames.isEmpty() ) {
                 // Then we need to flush the current message first
                 endMessage();
@@ -266,12 +286,72 @@ public class StateWriter {
             // Make sure there is a message started if needed
             startMessage();
 
+            // I'm adding this recalculation of the bitsRemaining because
+            // it seems right... but I'm fixing this probably a year or more
+            // after writing it so I feel the need to leave a comment.
+            // The next line that splits the frame would seem to need to know
+            // the accurate size.
+            // Justification: there are two case we are handling when entering
+            // here:
+            // 1) There were other frames in an existing message and we flushed
+            //      them with endMessage() and started a new message with startMessage().
+            //      In that case, bitsRemaining is way wrong because it was calculated
+            //      from the old unfinished message.
+            // 2) There were no other frames and we still can't fit it in one message.
+            //      In which case, bitsRemaining is accurate because it just happens
+            //      to be just the bufferSize - header.  Either way, it doesn't do
+            //      any harm to calculate again.
+            bitsRemaining = (bufferSize * 8) - estimatedSize;
             FrameState split = frame.split(bitsRemaining, objectProtocol);
             
             // Add the unsplit part to the current message
             outbound.frames.add(frame);
-            estimatedSize += frameSize;
+            
+            // Need to update the estimated size because we may leave the message
+            // open when dropping out of this loop.  ie: maybe we only wrote a tiny last
+            // part of a frame and there is still room for more frames later.
+            //estimatedSize += frameSize;
+            // However, the old line was as above and not using the actual added
+            // frame size if we were making a second pass through this loop.
+            // This can happen when the frame was too big for even one message.
+            frameSize = frame.getEstimatedBitSize() + 1; 
+            estimatedSize += frameSize; 
  
+            // At this point, we've either fully added the frame to the next
+            // outbound message or we had to split it.  If we full added it then
+            // the message stays open to see if the next frame will fit... we fall
+            // out of this loop.
+            // If the frame did NOT fully fit then we got again using the split
+            // off part as the new outbound frame... thus all of the bitsRemaining
+            // and estimatedSize fixes I made above (2016/06/14).
+            // My own testing prior to this probably never had a frame that spanned
+            // more than one message and so never hit this.  At last calculation,
+            // it takes something like 80 object updates to exceed a message size.
+            // And to trigger this bug, we'd have to not only exceed that but
+            // also have existing smaller frames already ready to go.
+            // (Queued up outbound frames would have made bitsRemaining a small
+            // number versus no frames queued in which the bitsRemaining would
+            // have been accurate... because empty queue = max bitsRemaining.)
+            // Though I guess the partial end of frame we wrote could set us
+            // up on the next endFrame() with items already in the queue and an
+            // inaccurate bitsRemaining again... so this error case is probably
+            // pretty common but for some reason didn't show up in my own meager 
+            // stress testing.  In the best case, bitsRemaining is wrong but still
+            // large enough to fit more data into.  I guess the problem comes when
+            // bitsRemaining from whatever was waiting in the outbound queue would
+            // be so small that no amount of splitting would fit.  The frame split logic
+            // assumes that at least one object update will fit so if we gave it a
+            // limit of say, 5 then it would never resolve properly. (Actually, looking
+            // at the code it will throw an exception.)  In the case where the message
+            // can't be split with the bits remaining we may want to just send the
+            // whole frame.  I worry that if we have too many acks built up and a really
+            // small MTU that maybe we hit the same issue of non-split... but at least
+            // we'll get an exception.
+            //
+            // Note: The first pass through the loop, calculating bitsRemaining is
+            // redundant but costs little. 
+ 
+            // TODO: add a split counter to a statistics object
             
             // It occurs to me that we can potentially _greatly_ reduce the size
             // of our frame states if we remove the redundant information.
