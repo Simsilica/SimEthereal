@@ -53,9 +53,22 @@ public interface TimeSource {
  
     /**
      *  Returns the current drift if there is one.  In a remote
-     *  time source, the drify is the offset from current time
+     *  time source, the drift is the offset from current time
      *  and is related in a loose way to both the ping time of the
      *  server and the general time difference of the server.
      */   
     public long getDrift();
+ 
+    /**
+     *  Sets a time that will be automatically added into the
+     *  normally returned time.  This allows getTime() to return
+     *  time in the past for interpolating object state buffers.
+     */   
+    public void setOffset( long offset );
+ 
+    /**
+     *  Returns the current time offset for this TimeSource.
+     */   
+    public long getOffset();
+    
 }

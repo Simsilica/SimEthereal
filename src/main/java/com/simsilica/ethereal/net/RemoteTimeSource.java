@@ -91,10 +91,12 @@ public class RemoteTimeSource implements TimeSource {
         this.syncTime = Statistics.getSequence("syncTime", true); 
     }
  
+    @Override
     public void setOffset( long offset ) {
         this.offset = offset;
     }
     
+    @Override
     public long getOffset() {
         return offset;
     }

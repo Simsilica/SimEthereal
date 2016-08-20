@@ -82,7 +82,7 @@ public class StateCollector {
     
     public StateCollector( ZoneManager zones, long collectionPeriod ) {
         this.zones = zones;
-        this.collectionPeriod = collectionPeriod;
+        this.collectionPeriod = collectionPeriod == 0 ? DEFAULT_PERIOD : collectionPeriod;
     }
 
     public void start() {

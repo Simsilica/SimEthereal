@@ -1,3 +1,10 @@
+Version 1.2.1
+--------------
+* Added EtherealHost.setStateCollectionInterval() to configure how often
+    state is retrieved from the ZoneManager and sent to the clients.
+* Added TimeSource.set/getOffset() to make it easier for clients to configure
+    how far in history they'd like time to represent.  Defaults to -100 ms.
+    
 
 Version 1.1.1
 --------------

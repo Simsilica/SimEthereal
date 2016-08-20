@@ -67,6 +67,7 @@ public class EtherealHost extends AbstractHostedConnectionService {
     private StateCollector stateCollector;
     private ObjectStateProtocol objectProtocol;
     private Vec3i clientZoneExtents;
+    private long stateCollectionInterval;
 
     private SessionDataDelegator delegator;
 
@@ -109,10 +110,26 @@ public class EtherealHost extends AbstractHostedConnectionService {
         stateCollector.removeListener(l);
     }
 
+    /**
+     *  Sets the state collection interval that the StateCollector will use
+     *  to pull history from the ZoneManager and deliver it to the clients.
+     *  By default this is 1/20th of a second, or 50,000,000 nanoseconds.
+     */
+    public void setStateCollectionInterval( long nanos ) {
+        if( stateCollector != null ) {
+            throw new RuntimeException("The state collection interval cannot be set once the service is initialized.");
+        }
+        this.stateCollectionInterval = nanos;
+    }
+    
+    public long getStateCollectionInterval() {
+        return stateCollectionInterval; 
+    } 
+
     @Override
     protected void onInitialize( HostedServiceManager s ) {
         this.zones = new ZoneManager(grid);
-        this.stateCollector = new StateCollector(zones);
+        this.stateCollector = new StateCollector(zones, stateCollectionInterval);
         
         // A general listener for forwarding the messages
         // to the client-specific handler
