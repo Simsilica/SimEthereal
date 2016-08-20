@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="SimEthereal : A high performance library for real-time networked object synching.">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>SimEthereal</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/Simsilica/SimEthereal">View on GitHub</a>
+
+          <h1 id="project_title">SimEthereal</h1>
+          <h2 id="project_tagline">A high performance library for real-time networked object synching.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/Simsilica/SimEthereal/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/Simsilica/SimEthereal/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <p><img src="http://imgur.com/MV1WjxT.png" alt="SimEthereal Logo"></p>
+
+<p>SimEthereal uses fast and small UDP messaging to share object state between clients
+and the server.  It operates in an "authoritative server" environment and only the deltas 
+of a "known good state" are sent so that redundant information can be eliminated.<br>
+The "known good state" is synchronized through a sort of transient reliable protocol 
+that uses a double-ack approach so that messages are always valid.</p>
+
+<p>Each message packs as much state in as possible to try to fit under standard MTU
+sizes to keep the UDP packets from being split.  As such, it's possible, in the worst
+case, to fit more than 80 object updates in a single 1500 byte message.</p>
+
+<h2>
+<a id="main-goals" class="anchor" href="#main-goals" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Main goals:</h2>
+
+<ul>
+<li>Fast: optimize for message latency and keep overhead low</li>
+<li>Low bandwidth: pack as much state as possible into a single message</li>
+<li>Easy to plugin to jMonkeyEngine applications: uses the JME network service model</li>
+<li>Flexible: provide state syncing without dictating where the state comes from or
+how it will be used.</li>
+</ul>
+
+<h2>
+<a id="architecture" class="anchor" href="#architecture" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Architecture</h2>
+
+<p><img src="http://imgur.com/Et9dv4q.png" alt="Overview Diagram"></p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">SimEthereal maintained by <a href="https://github.com/Simsilica">Simsilica</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
