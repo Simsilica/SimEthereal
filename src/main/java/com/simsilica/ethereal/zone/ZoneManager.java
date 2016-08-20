@@ -54,6 +54,30 @@ import org.slf4j.LoggerFactory;
  *  is used to update the status of active objects.  The zone 
  *  manager then makes sure that information gets to where it needs to go.
  *
+ *  <p>Object updates need to be done in the context of a 'frame' so
+ *  that the updates can be properly grouped together.  To do this, 
+ *  the game code that is reporting updates needs to call the ZoneManager
+ *  methods using a specific life cycle:</p>
+ *
+ *  <ul>
+ *  <li>beginUpdate(frameTime): starts a new frame.  The frame time will
+ *  be used to stamp any state updates.</li>
+ *  <li>updateEntity(...): record an update event for the specific entity
+ *  within the current frame.</li>
+ *  <li>remove(entityId): removes an entity from the zone manager.  This can
+ *  be called between beginUpdate() and endUpdate() but it can also be called
+ *  outside of those calls and the removal will be enqueued for the next update.
+ *  If this feature is used then make sure to also call add() if the object
+ *  needs to come back.</li>
+ *  <li>endUpdate(): closes updates to the current frame.</li>
+ *  <li>add(entityId): used outside of beginUpdate()/endUpdate() if remove(id)
+ *  is also used outside of beingUpdate()/endUpdate().  Calling remove(id)
+ *  outside of a begin/end block will enqueue the removal for the next begin/end
+ *  block.  add() will remove it from this queue in case that removal hasn't been
+ *  sent yet.  Normally add() is not required as updateEntity() will add the
+ *  entity if it hasn't already seen it.</lI>    
+ *  </ul>
+ *
  *  @author    Paul Speed
  */
 public class ZoneManager {
@@ -82,34 +106,63 @@ public class ZoneManager {
     private long updateStartTime = 0;
     private long totalUpdateTime = 0; 
 
+    /**
+     *  Creates a new ZoneManager with a ZoneGrid sized using zoneSize and
+     *  with a history backlog of 12 frames.
+     */
     public ZoneManager( int zoneSize ) {
         this(new ZoneGrid(zoneSize));
     }
-    
+ 
+    /**
+     *  Creates a new ZoneManager with the specified grid representation and
+     *  with a history backlog of 12.
+     */   
     public ZoneManager( ZoneGrid grid ) {
         this(grid, 12);
     }
-    
+ 
+    /**
+     *  Creates a new zone manager with the specified grid representation and
+     *  history backlog.
+     *
+     *  @param grid The grid settings used for zone partitioning.
+     *  @param historyBacklog Designates how many frames of history to keep
+     *  in each zone. 
+     */   
     public ZoneManager( ZoneGrid grid, int historyBacklog ) {
         this.grid = grid;
         this.historyBacklog = historyBacklog;
         this.historyIndex = new long[historyBacklog];
     }
 
+    /**
+     *  Returns the current zone specification used for partioning space into
+     *  zones.
+     */
     public ZoneGrid getGrid() {
         return grid;
     }
 
     /**
      *  Set to true if history should be collected or false if object updates
-     *  should be ignored.  Generally, the StateCollector will turn history collection    
-     *  on when it is ready to start periodically purging history.  Otherwise there
-     *  is a risk that the buffers will overflow before the first purge is done. 
+     *  should be ignored.  This method is used internal to the framework for
+     *  managing the lifecycle of dependent components.  When a ZoneManager is 
+     *  not part of an active state collection process then it's important that 
+     *  it not collect any history because it might overflow its buffers since purge() 
+     *  is never called.  Generally, the StateCollector will turn history collection on 
+     *  when it is ready to start periodically purging history.
+     *  Defaults to false until a state collection process turns it on.
      */
     public void setCollectHistory( boolean b ) {
         this.collectHistory = b;
     }
     
+    /**
+     *  Returns true if the ZoneManager is currently collecting history, false otherwise.
+     *  When a ZoneManager is not part of an active StateCollector then it's important
+     *  that it not track history. 
+     */
     public boolean getCollectHistory() {
         return collectHistory;
     }
@@ -128,6 +181,12 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
 
 //long lastTime = 0;
 
+    /**
+     *  Starts history collection for a frame at the specified time.  All
+     *  updateEntity() and remove() calls after this beginUpdate() will be
+     *  collected together and associated with the specified frame time
+     *  until endUpdate() is called.
+     */
     public void beginUpdate( long time ) {
         updateStartTime = System.nanoTime();
         updateTime = time;
@@ -204,7 +263,10 @@ if( updateStartTime > nextFrameTime ) {
         // Now we blast an update to the zones for any listeners to handle.
         info.sendUpdate(id, p.clone(), orientation.clone());
     }    
-   
+ 
+    /**
+     *  Called to end update collection for the current 'frame'.  See: beginUpdate()
+     */  
     public void endUpdate()
     {
         // If we aren't really collecting history then don't do a commit.
@@ -252,6 +314,15 @@ if( updateStartTime > nextFrameTime ) {
         } 
     }
 
+    /**
+     *  Called by a state collection process to return all of the history that
+     *  has been collected since the last call to purgeState().  Generally, this
+     *  method is called internal to the framework, usually by the StateCollector.
+     *  The return array will contain one StateFrame[] for every beginUpdate()/endUpdate()
+     *  block since the last purgeState().  Each StateFrame will contain all of the 
+     *  state updates for that frame divided into separate StateBlocks, one per active
+     *  zone.
+     */
     public StateFrame[] purgeState() {
     
         // Obtain the general write lock for history since
