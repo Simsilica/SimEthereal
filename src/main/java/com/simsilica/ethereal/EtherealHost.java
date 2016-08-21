@@ -68,6 +68,7 @@ public class EtherealHost extends AbstractHostedConnectionService {
     private ObjectStateProtocol objectProtocol;
     private Vec3i clientZoneExtents;
     private long stateCollectionInterval;
+    private long stateCollectionSleepTime = 1;
 
     private SessionDataDelegator delegator;
 
@@ -126,10 +127,30 @@ public class EtherealHost extends AbstractHostedConnectionService {
         return stateCollectionInterval; 
     } 
 
+    /**
+     *  Sets the sleep() time for the state collector's idle periods.
+     *  This defaults to 1 which keeps the CPU happier while also providing
+     *  timely updates.  However, for higher rates of state collection (lower stateCollectionIntervals)
+     *  on windows, (such as 60 FPS) sleep(1) may take longer than 1/60th of a second or close
+     *  enough to still cause collection frame drops.  In that case, it can be configured
+     *  to 0 which should provide timelier updates.
+     */
+    public void setStateCollectionSleepTime( long millis ) {
+        this.stateCollectionSleepTime = millis;
+        if( stateCollector != null ) {
+            stateCollector.setIdleSleepTime(millis);
+        }
+    }
+    
+    public long getStateCollectionSleepTime() {
+        return stateCollectionSleepTime;
+    }
+
     @Override
     protected void onInitialize( HostedServiceManager s ) {
         this.zones = new ZoneManager(grid);
-        this.stateCollector = new StateCollector(zones, stateCollectionInterval);
+        this.stateCollector = new StateCollector(zones, stateCollectionInterval);       
+        stateCollector.setIdleSleepTime(stateCollectionSleepTime);
         
         // A general listener for forwarding the messages
         // to the client-specific handler

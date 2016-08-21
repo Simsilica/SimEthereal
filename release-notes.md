@@ -4,7 +4,11 @@ Version 1.2.1
     state is retrieved from the ZoneManager and sent to the clients.
 * Added TimeSource.set/getOffset() to make it easier for clients to configure
     how far in history they'd like time to represent.  Defaults to -100 ms.
-* Expanded ZoneManager's javadoc.    
+* Expanded ZoneManager's javadoc.
+* Made StateCollector's idle sleep time configurable and exposed it as
+    an EtherealHost property.
+* Flipped the StateCollector's update loop to sleep when idle instead of
+    only after a valid state collection was made.
     
 
 Version 1.1.1

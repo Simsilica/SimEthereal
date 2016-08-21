@@ -64,6 +64,7 @@ public class StateCollector {
     
     private ZoneManager zones;
     private long collectionPeriod;
+    private long idleSleepTime = 1; // for our standard 20 FPS that's more than fine
     private final Runner runner = new Runner();
 
     private final Set<StateListener> listeners = new CopyOnWriteArraySet<>();
@@ -110,6 +111,25 @@ public class StateCollector {
     public void removeListener( StateListener l ) {
         listeners.remove(l);
         removed.add(l);
+    }
+    
+    /**
+     *  Sets the sleep() time for the state collector's idle periods.
+     *  This defaults to 1 which keeps the CPU happier while also providing
+     *  timely checks against the interval time.  However, for higher rates of 
+     *  state collection (lower collectionPeriods such as 16 ms or 60 FPS) on windows, 
+     *  sleep(1) may take longer than 1/60th of a second or close enough to still 
+     *  cause collection frame drops.  In that case, it can be configured to 0 which 
+     *  should provide timelier updates.
+     *  Set to -1 to avoid sleeping at all in which case the thread will consume 100%
+     *  of a single core in order to busy wait between collection intervals.
+     */
+    public void setIdleSleepTime( long millis ) {
+        this.idleSleepTime = millis;
+    }
+    
+    public long getIdleSleepTime() {
+        return idleSleepTime;
     } 
 
     protected List<StateListener> getListeners( ZoneKey key, boolean create ) {
@@ -274,19 +294,18 @@ long nextCountTime = lastTime + 1000000000L;
             while( go.get() ) {
                 long time = System.nanoTime();
                 long delta = time - lastTime; 
-                if( delta < collectionPeriod ) {
-                    // Not time to collect yet
-                    continue;
-                }
-                lastTime = time;                                        
-                try {
-                    collect();
-                    counter++;
-                    //long end = System.nanoTime();
-                    //delta = end - time;
-                } catch( Exception e ) {
-                    collectionError(e);
-                }
+                if( delta >= collectionPeriod ) {
+                    // Time to collect 
+                    lastTime = time;                                        
+                    try {
+                        collect();
+                        counter++;
+                        //long end = System.nanoTime();
+                        //delta = end - time;
+                    } catch( Exception e ) {
+                        collectionError(e);
+                    }
+                    
 if( lastTime > nextCountTime ) {
     if( counter < 20 ) {
         System.out.println("collect underflow FPS:" + counter);        
@@ -295,10 +314,17 @@ if( lastTime > nextCountTime ) {
     counter = 0;            
     nextCountTime = lastTime + 1000000000L;
 }                   
+                    // Don't sleep when we've processed in case we need
+                    // to process again immediately.
+                    continue;
+                }
+                
                 // Wait just a little.  This is an important enough thread
-                // that we'll poll instead of smart-sleep. 
+                // that we'll poll instead of smart-sleep.
                 try {
-                    Thread.sleep(1);
+                    if( idleSleepTime > 0 ) {
+                        Thread.sleep(idleSleepTime);
+                    }
                 } catch( InterruptedException e ) {
                     throw new RuntimeException("Interrupted sleeping", e);
                 }
