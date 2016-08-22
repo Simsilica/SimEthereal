@@ -103,6 +103,7 @@ public class NetworkStateListener implements StateListener {
     private long windowMax = 100;
     private long windowSize = 0;
 
+    private ConnectionStats stats = new ConnectionStats();
     
     public NetworkStateListener( EtherealHost host, HostedConnection conn, ZoneGrid grid, int zoneRadius ) {
         this(host, conn, new LocalZoneIndex(grid, zoneRadius), new IdIndex(10));
@@ -124,6 +125,10 @@ public class NetworkStateListener implements StateListener {
     
     public Long getSelf() {
         return self;
+    }
+
+    public ConnectionStats getConnectionStats() {
+        return stats;
     }
 
     /**
@@ -182,6 +187,7 @@ public class NetworkStateListener implements StateListener {
         m.resetReceivedTime();
         
         long ping = m.getReceivedTime() - m.getTime();
+        stats.addPingTime(ping);
 
         long newPing = (ping + pingTime * windowSize) / (windowSize + 1);
         if( windowSize < windowMax ) {
@@ -230,10 +236,13 @@ public class NetworkStateListener implements StateListener {
         // See if we've gotten any ACKs to add to our ACK header
         ClientStateMessage ackedMsg;
         while( (ackedMsg = acked.poll()) != null ) {
-        
+ 
+            stats.incrementAcks();
+                   
             // Acknowledge any state acks we've recieved up until now.
             SentState sentState = stateWriter.ackSentState(ackedMsg.getId());
             if( sentState == null ) {
+                stats.incrementAckMisses();
                 continue;
             }
             

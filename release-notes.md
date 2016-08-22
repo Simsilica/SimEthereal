@@ -9,6 +9,8 @@ Version 1.2.1
     an EtherealHost property.
 * Flipped the StateCollector's update loop to sleep when idle instead of
     only after a valid state collection was made.
+* Added a ConnectionStats object to the NetworkStateListener that currently collects
+    the average ping time and percentage of missed ACKs.     
     
 
 Version 1.1.1
