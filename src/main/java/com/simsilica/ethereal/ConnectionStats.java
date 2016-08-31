@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ConnectionStats {
 
     private RollingAverage ping = new RollingAverage(5);
+    private RollingAverage messageSize = new RollingAverage(5);
     private MissCounter acks = new MissCounter();
     
     public ConnectionStats() {
@@ -58,6 +59,18 @@ public class ConnectionStats {
  
     public long getAveragePingTime() {
         return ping.average.get();
+    }
+ 
+    public final void addMessageSize( long size ) {
+        messageSize.add(size);
+    }
+ 
+    public long getAverageMessageSize() {
+        return messageSize.average.get();
+    }
+    
+    public long getTotalMessageBytes() {
+        return messageSize.total.get();
     }
     
     public final void incrementAcks() {
@@ -77,6 +90,7 @@ public class ConnectionStats {
         private int count;
         private long accumulator;
         private AtomicLong average = new AtomicLong();
+        private AtomicLong total = new AtomicLong();
         
         public RollingAverage( int windowSize ) {
             this.windowSize = windowSize;
@@ -86,7 +100,8 @@ public class ConnectionStats {
             long size = Math.min(count, windowSize);
             count++;
             long roll = (accumulator * size + value) / (size + 1);
-            average.set(roll);            
+            average.set(roll);
+            total.addAndGet(value);            
         }
     }
     

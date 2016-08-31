@@ -42,6 +42,7 @@ import com.simsilica.ethereal.SharedObject;
 import com.simsilica.ethereal.SharedObjectSpace;
 import com.simsilica.ethereal.Statistics;
 import com.simsilica.ethereal.Statistics.Sequence;
+import com.simsilica.ethereal.Statistics.Tracker;
 import com.simsilica.ethereal.zone.ZoneGrid;
 import com.simsilica.ethereal.zone.ZoneKey;
 import java.util.ArrayList;
@@ -81,6 +82,7 @@ public class StateReceiver {
     private long lastFrameTime;
  
     private final Sequence frameTime;
+    private final Tracker messageSize;
  
     public StateReceiver( Client client, LocalZoneIndex zoneIndex, SharedObjectSpace space ) {
         this.client = client;
@@ -91,6 +93,7 @@ public class StateReceiver {
         this.timeSource = new RemoteTimeSource(-100 * 1000000L); // -100 ms in the past to start with
         
         this.frameTime = Statistics.getSequence("stateTime", true);
+        this.messageSize = Statistics.getTracker("messageSize", 5, true);
     }
  
     public RemoteTimeSource getTimeSource() {
@@ -107,6 +110,9 @@ public class StateReceiver {
 
         // Very first thing we do is acknowledge the message
         client.send(new ClientStateMessage(msg, 0));
+ 
+        // Collect the statistics
+        messageSize.update(ObjectStateMessage.HEADER_SIZE + msg.getBuffer().length);
         
         // Grab the state and track it for later.  We will
         // apply this state to our 'current' versions but we will

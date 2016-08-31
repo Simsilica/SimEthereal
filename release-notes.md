@@ -10,7 +10,9 @@ Version 1.2.1
 * Flipped the StateCollector's update loop to sleep when idle instead of
     only after a valid state collection was made.
 * Added a ConnectionStats object to the NetworkStateListener that currently collects
-    the average ping time and percentage of missed ACKs.     
+    the average ping time, percentage of missed ACKs, and the average message size.
+* Modified the StateReceiver to add message size stats to a Statistics tracker.  This
+    let's clients see the average and total message sizes.
     
 
 Version 1.1.1

@@ -37,6 +37,7 @@
 package com.simsilica.ethereal.net;
 
 import com.jme3.network.HostedConnection;
+import com.simsilica.ethereal.ConnectionStats;
 import com.simsilica.ethereal.zone.ZoneKey;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -91,9 +92,12 @@ public class StateWriter {
     private int headerBits;
     private int estimatedSize;
     
-    public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol ) {
+    private ConnectionStats stats;
+    
+    public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol, ConnectionStats stats ) {
         this.conn = conn;
-        this.objectProtocol = objectProtocol;   
+        this.objectProtocol = objectProtocol;
+        this.stats = stats;   
     }
     
     /**
@@ -411,8 +415,10 @@ public class StateWriter {
         ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);        
         msg.setState(outbound, objectProtocol);
         sentStates.add(outbound);
- 
+  
         conn.send(msg);
+  
+        stats.addMessageSize(ObjectStateMessage.HEADER_SIZE + msg.getBuffer().length);
         
         outbound = null;
     }
