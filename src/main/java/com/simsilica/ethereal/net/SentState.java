@@ -69,7 +69,7 @@ public class SentState {
 
     /**
      *  Returns true if this state is before the specified messageId.  Message IDs
-     *  wrap so a simple < check is not enough.
+     *  wrap so a simple &lt; check is not enough.
      */
     public boolean isBefore( int compare ) {
         if( Math.abs(messageId - compare) > 32000 ) {
