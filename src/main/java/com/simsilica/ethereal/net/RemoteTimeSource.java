@@ -138,12 +138,19 @@ public class RemoteTimeSource implements TimeSource {
         if( uninitialized ) {
             return 0;
         }
-        long t = System.nanoTime();
-        t = t + drift + offset;
+        long raw = System.nanoTime();
+        long t = raw + drift + offset;
         if( t > lastTime ) {
             lastTime = t;
         } else {
-System.out.println("Time rolled backwards:" + (lastTime - t) + " nanos");        
+            if( log.isWarnEnabled() ) {
+                log.warn("Time didn't advance:" + (lastTime - t) 
+                         + " nanos.  Current:" + t 
+                         + "  Last:" + lastTime
+                         + "  Raw:" + raw 
+                         + "  Drift:" + drift 
+                         + "  Offset:" + offset);
+            }        
         }
         return lastTime;
     }
