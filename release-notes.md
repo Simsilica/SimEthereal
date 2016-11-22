@@ -1,4 +1,4 @@
-Version 1.2.1
+Version 1.2.1 (unreleased)
 --------------
 * Added EtherealHost.setStateCollectionInterval() to configure how often
     state is retrieved from the ZoneManager and sent to the clients.
@@ -13,6 +13,10 @@ Version 1.2.1
     the average ping time, percentage of missed ACKs, and the average message size.
 * Modified the StateReceiver to add message size stats to a Statistics tracker.  This
     let's clients see the average and total message sizes.
+* Modified the build.gradle to replace the JME version with a specific 
+    version instead of letting it float.  I think alpha4 is generally
+    the minimum accepted 3.1 version at this point. 
+    Did the same for all of the floating version references.
     
 
 Version 1.1.1
