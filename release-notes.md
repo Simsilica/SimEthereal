@@ -1,4 +1,4 @@
-Version 1.2.1 (unreleased)
+Version 1.2.1
 --------------
 * Added EtherealHost.setStateCollectionInterval() to configure how often
     state is retrieved from the ZoneManager and sent to the clients.
