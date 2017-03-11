@@ -38,6 +38,7 @@ package com.simsilica.ethereal;
 
 import com.jme3.network.HostedConnection;
 import com.simsilica.mathd.Quatd;
+import com.simsilica.mathd.Vec3i;
 import com.simsilica.mathd.Vec3d;
 import com.simsilica.ethereal.net.ClientStateMessage;
 import com.simsilica.ethereal.net.SentState;
@@ -107,6 +108,10 @@ public class NetworkStateListener implements StateListener {
     
     public NetworkStateListener( EtherealHost host, HostedConnection conn, ZoneGrid grid, int zoneRadius ) {
         this(host, conn, new LocalZoneIndex(grid, zoneRadius), new IdIndex(10));
+    }
+
+    public NetworkStateListener( EtherealHost host, HostedConnection conn, ZoneGrid grid, Vec3i zoneExtents ) {
+        this(host, conn, new LocalZoneIndex(grid, zoneExtents), new IdIndex(10));
     }
     
     public NetworkStateListener( EtherealHost host, HostedConnection conn, LocalZoneIndex zoneIndex, IdIndex idIndex ) {
@@ -221,6 +226,10 @@ public class NetworkStateListener implements StateListener {
 
     @Override
     public void beginFrame( long time ) {
+ 
+        if( log.isTraceEnabled() ) {
+            log.trace(self + ":beginFrame(" + time + ") selfPosition:" + selfPosition);
+        }
     
         // If the zones changed last frame then clear the buffers
         if( zonesChanged ) {    
@@ -233,6 +242,10 @@ public class NetworkStateListener implements StateListener {
     @Override
     public void endFrame( long time ) {
     
+        if( log.isTraceEnabled() ) {
+            log.trace(self + ":endFrame(" + time + ") selfPosition:" + selfPosition);
+        }
+        
         // See if we've gotten any ACKs to add to our ACK header
         ClientStateMessage ackedMsg;
         while( (ackedMsg = acked.poll()) != null ) {
@@ -317,6 +330,10 @@ public class NetworkStateListener implements StateListener {
     @Override
     public void stateChanged( StateBlock b ) {
  
+        if( log.isTraceEnabled() ) {
+            log.trace(self + ":stateChanged(" + b + ")");
+        }
+
         // StateBlocks are per zone but contain all of the object
         // objects for a particular time step in that zone.
     
@@ -346,6 +363,10 @@ public class NetworkStateListener implements StateListener {
                     }
                 }                 
             }                
+        } else {
+            if( log.isTraceEnabled() ) {
+                log.trace(self + ":No updates");
+            }
         }
         if( b.getRemovals() != null ) {
             for( Long e : b.getRemovals() )

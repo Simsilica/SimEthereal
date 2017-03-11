@@ -1,3 +1,14 @@
+Version 1.2.2 (unreleased)
+--------------
+* Fixed a bug where the newer state messages would fail if the game hadn't
+    already registered Vec3d as a serializable class.
+* Fixed NetworkStateListener to properly pay attention to zone extents.
+* Fixed EtherealHost to pass the specified client zone extents on to the 
+    NetworkStateListener.
+* Added additional trace logging to NetworkStateListener.
+* Upgraded to sim-math 1.1.1   
+
+
 Version 1.2.1
 --------------
 * Added EtherealHost.setStateCollectionInterval() to configure how often

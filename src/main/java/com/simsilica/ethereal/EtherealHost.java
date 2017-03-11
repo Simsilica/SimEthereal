@@ -38,6 +38,7 @@ package com.simsilica.ethereal;
 
 import com.jme3.network.HostedConnection;
 import com.jme3.network.serializing.Serializer;
+import com.jme3.network.serializing.serializers.FieldSerializer;
 import com.jme3.network.service.AbstractHostedConnectionService;
 import com.jme3.network.service.HostedServiceManager;
 import com.jme3.network.util.SessionDataDelegator;
@@ -88,7 +89,8 @@ public class EtherealHost extends AbstractHostedConnectionService {
         this.grid = grid;
         this.clientZoneExtents = clientZoneExtents;
         
-        Serializer.registerClasses(ClientStateMessage.class, ObjectStateMessage.class);        
+        Serializer.registerClasses(ClientStateMessage.class, ObjectStateMessage.class); 
+        Serializer.registerClass(Vec3d.class, new FieldSerializer());        
     }
 
     public ZoneManager getZones() {
@@ -191,7 +193,7 @@ public class EtherealHost extends AbstractHostedConnectionService {
             return;
         }
     
-        nsl = new NetworkStateListener(this, hc, grid, 1);
+        nsl = new NetworkStateListener(this, hc, grid, clientZoneExtents);
         hc.setAttribute(NetworkStateListener.ATTRIBUTE_KEY, nsl);
         
         // Now add it to the state collector
