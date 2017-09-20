@@ -146,7 +146,7 @@ public class LocalZoneIndex {
         int y = zone.y - yBase;
         int z = zone.z - zBase;
         
-        return minZoneId + z * (xSize * ySize) + y * ySize + x;   
+        return minZoneId + z * (xSize * ySize) + y * xSize + x;   
     }
         
     public ZoneKey getCenter() {
