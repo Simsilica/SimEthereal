@@ -120,7 +120,7 @@ public class NetworkStateListener implements StateListener {
         this.zoneIndex = zoneIndex;
         this.idIndex = idIndex;
         this.space = new SharedObjectSpace(host.getObjectProtocol());
-        this.stateWriter = new StateWriter(conn, host.getObjectProtocol(), stats);        
+        this.stateWriter = new StateWriter(conn, host.getObjectProtocol(), host.getTimeSource(), stats);        
     }
 
     public void setSelf( Long self, Vec3d startingPosition ) {

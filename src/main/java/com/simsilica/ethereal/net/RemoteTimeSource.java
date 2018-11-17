@@ -39,7 +39,7 @@ package com.simsilica.ethereal.net;
 import com.simsilica.ethereal.DebugUtils;
 import com.simsilica.ethereal.Statistics;
 import com.simsilica.ethereal.Statistics.Sequence;
-import com.simsilica.ethereal.TimeSource;
+import com.simsilica.ethereal.SynchedTimeSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  *  @author    Paul Speed
  */
-public class RemoteTimeSource implements TimeSource {
+public class RemoteTimeSource implements SynchedTimeSource {
 
     static Logger log = LoggerFactory.getLogger(RemoteTimeSource.class);
 
@@ -102,7 +102,7 @@ public class RemoteTimeSource implements TimeSource {
     }
      
     protected void updateDrift( long serverTime ) {
-        
+
         syncTime.add(serverTime);
     
         this.lastServerTime = serverTime;

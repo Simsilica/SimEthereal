@@ -1,4 +1,4 @@
-Version 1.2.2 (unreleased)
+Version 1.3.0 (unreleased)
 --------------
 * Fixed a bug where the newer state messages would fail if the game hadn't
     already registered Vec3d as a serializable class.
@@ -6,7 +6,14 @@ Version 1.2.2 (unreleased)
 * Fixed EtherealHost to pass the specified client zone extents on to the 
     NetworkStateListener.
 * Added additional trace logging to NetworkStateListener.
-* Upgraded to sim-math 1.1.1   
+* Fixed an issue where raw nanoTime() was being used to timestamp messages.
+    Now applications can specify their own TimeSource on the server.
+    See issue #4.
+* Refactored the TimeSource interface to be just a time provider and added
+    a SynchedTimeSource interface to provide the extra drift/offset methods
+    that it previously had.  RemoteTimeSource now implements SynchedTimeSource.
+* Upgraded to sim-math 1.2.0
+* Set sourceCompatibility to 1.7   
 
 
 Version 1.2.1

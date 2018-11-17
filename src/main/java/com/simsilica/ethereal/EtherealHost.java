@@ -73,6 +73,15 @@ public class EtherealHost extends AbstractHostedConnectionService {
 
     private SessionDataDelegator delegator;
 
+    /**
+     *  This is the time source that will be used for timestamping outbound
+     *  object state messages.  This time source should be compatible with whatever
+     *  is providing time to the object update messages.  Otherwise, clients will
+     *  see a wide difference between what they see from RemoteTimeSource and
+     *  the timestamps in the object updates.
+     */
+    private TimeSource timeSource = new NanoTimeSource();
+
     public EtherealHost() {
         this(new ObjectStateProtocol(8, 64, new Vec3Bits(-10, 42, 16), new QuatBits(12)),
              new ZoneGrid(32), new Vec3i(1, 1, 1));
@@ -91,6 +100,23 @@ public class EtherealHost extends AbstractHostedConnectionService {
         
         Serializer.registerClasses(ClientStateMessage.class, ObjectStateMessage.class); 
         Serializer.registerClass(Vec3d.class, new FieldSerializer());        
+    }
+
+    /**
+     *  Returns the aurhoritative time source on the server.  This should match the timestamps
+     *  that are being supplied in object update notifications.
+     */
+    public TimeSource getTimeSource() {
+        return timeSource;
+    }
+
+    /**
+     *  Returns the aurhoritative time source on the server.  This should match the timestamps
+     *  that are being supplied in object update notifications.  Applications should set their
+     *  own timesource if they are using a different time tracking basis than System.nanoTime().
+     */
+    public void setTimeSource( TimeSource timeSource ) {
+        this.timeSource = timeSource == null ? new NanoTimeSource() : timeSource;
     }
 
     public ZoneManager getZones() {

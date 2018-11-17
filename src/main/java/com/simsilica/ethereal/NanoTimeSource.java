@@ -38,42 +38,19 @@ package com.simsilica.ethereal;
 
 
 /**
- *  Provides local or networked time as needed with certain
- *  implied constraints (like time always moves forward, ie:
- *  never backwards, etc.)
+ *  A TimeSource that directly returns System.nanoTime() as the time.
  *
  *  @author    Paul Speed
  */
 public class NanoTimeSource implements TimeSource {
  
-    private long offset;
-    
     public NanoTimeSource() {
-    }
-    
-    public NanoTimeSource( long offset ) {
-        this.offset = offset;
-    }
- 
-    public void setOffset( long offset ) {
-        this.offset = offset;
-    }
-    
-    public long getOffset() {
-        return offset;
     }
     
     /**
      *  Returns the current time in nanoseconds.
      */
     public long getTime() {
-        return System.nanoTime() + offset;
-    }
- 
-    /**
-     *  Returns 0.
-     */   
-    public long getDrift() {
-        return 0;
+        return System.nanoTime();
     }
 }

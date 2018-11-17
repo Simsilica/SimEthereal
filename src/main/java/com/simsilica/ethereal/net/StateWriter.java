@@ -36,15 +36,20 @@
 
 package com.simsilica.ethereal.net;
 
-import com.jme3.network.HostedConnection;
-import com.simsilica.ethereal.ConnectionStats;
-import com.simsilica.ethereal.zone.ZoneKey;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.TreeSet;
+
+import org.slf4j.*;
+
+import com.jme3.network.HostedConnection;
+
+import com.simsilica.ethereal.ConnectionStats;
+import com.simsilica.ethereal.TimeSource;
+import com.simsilica.ethereal.zone.ZoneKey;
 
 
 /**
@@ -54,6 +59,8 @@ import java.util.TreeSet;
  *  @author    Paul Speed
  */
 public class StateWriter {
+
+    static Logger log = LoggerFactory.getLogger(StateWriter.class);
 
     /**
      *  The connection to send state through.
@@ -91,12 +98,18 @@ public class StateWriter {
     private int nextMessageId = 0;
     private int headerBits;
     private int estimatedSize;
+ 
+    // Time source we will use for timestamping outbound messages.
+    // This time should be compatible with the times provided by the 
+    // frame updates or things will get weird.
+    private TimeSource timeSource;
     
     private ConnectionStats stats;
     
-    public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol, ConnectionStats stats ) {
+    public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol, TimeSource timeSource, ConnectionStats stats ) {
         this.conn = conn;
         this.objectProtocol = objectProtocol;
+        this.timeSource = timeSource;
         this.stats = stats;   
     }
     
@@ -187,6 +200,15 @@ public class StateWriter {
     }
 
     public void startFrame( long time, ZoneKey centerZone ) throws IOException {
+    
+        // Watchdog to check for mismatched time sources.
+        long delta = Math.abs(time - timeSource.getTime()); 
+        if( delta > 1000000000 ) {
+            // more then a second difference means they are waaaaaay off.
+            // Even a ms difference would be large.
+            log.warn("Mismatched time sources.  Delta:" + (delta/1000000000.0) + " seconds");
+        }
+    
         // End any previous frame that we might be in the middle of    
         endFrame();
         
@@ -409,7 +431,8 @@ public class StateWriter {
 
     protected void endMessage() throws IOException {
     
-        long timestamp = System.nanoTime();
+        //long timestamp = System.nanoTime();
+        long timestamp = timeSource.getTime();
         int id = nextMessageId++;    
 
         ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);        

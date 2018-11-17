@@ -14,10 +14,10 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'maven'
 
-version='1.2.2-SNAPSHOT'
+version='1.3.0-SNAPSHOT'
 group='com.simsilica'
 
-ext.jmeVersion = "3.1.0-alpha4" 
+ext.jmeVersion = "3.1.0-stable" 
 
 // Version meta-data
 ext {
@@ -34,7 +34,9 @@ ext {
     issueTrackerUrl = 'https://github.com/Simsilica/SimEthereal/issues'
 }
 
+sourceCompatibility = 1.7
 compileJava {
+    options.encoding = 'UTF-8'
     options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
 }
 
@@ -53,7 +55,7 @@ dependencies {
     compile "org.jmonkeyengine:jme3-networking:$jmeVersion" 
     
     // Uses SimMath for bit streaming utilities and transition buffers
-    compile "com.simsilica:sim-math:1.1.2-SNAPSHOT"
+    compile "com.simsilica:sim-math:1.2.0-SNAPSHOT"
  
     // Base logging   
     compile 'org.slf4j:slf4j-api:1.7.15'    

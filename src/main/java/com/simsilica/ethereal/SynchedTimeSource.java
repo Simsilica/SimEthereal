@@ -1,7 +1,7 @@
 /*
  * $Id$
  * 
- * Copyright (c) 2015, Simsilica, LLC
+ * Copyright (c) 2018, Simsilica, LLC
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -38,16 +38,33 @@ package com.simsilica.ethereal;
 
 
 /**
- *  Provides local or networked time as needed with certain
- *  implied constraints (like time always moves forward, ie:
- *  never backwards, etc.)
+ *  A time source that represents time that has been synched with
+ *  another time source relative to local system time.  It has
+ *  methods that indicate the amount of drift, offset, etc. that
+ *  maps local system time to TimeSource time.
  *
  *  @author    Paul Speed
  */
-public interface TimeSource {
+public interface SynchedTimeSource extends TimeSource {
     
     /**
-     *  Returns the current time in nanoseconds.
-     */
-    public long getTime();
+     *  Returns the current drift if there is one.  In a remote
+     *  time source, the drift is the offset from current time
+     *  and is related in a loose way to both the ping time of the
+     *  server and the general time difference of the server.
+     */   
+    public long getDrift();
+ 
+    /**
+     *  Sets a time that will be automatically added into the
+     *  normally returned time.  This allows getTime() to return
+     *  time in the past for interpolating object state buffers.
+     */   
+    public void setOffset( long offset );
+ 
+    /**
+     *  Returns the current time offset for this TimeSource.
+     */   
+    public long getOffset();
+    
 }
