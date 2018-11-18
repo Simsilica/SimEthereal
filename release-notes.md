@@ -1,4 +1,4 @@
-Version 1.3.0 (unreleased)
+Version 1.3.0 (latest)
 --------------
 * Fixed a bug where the newer state messages would fail if the game hadn't
     already registered Vec3d as a serializable class.
