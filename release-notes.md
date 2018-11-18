@@ -1,3 +1,7 @@
+Version 1.3.1 (unreleased)
+--------------
+* Fixed zone ID calculation for non-uniform grids.  See PR #2.
+
 Version 1.3.0 (latest)
 --------------
 * Fixed a bug where the newer state messages would fail if the game hadn't
