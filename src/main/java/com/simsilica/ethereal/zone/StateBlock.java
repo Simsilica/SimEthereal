@@ -36,10 +36,10 @@
 
 package com.simsilica.ethereal.zone;
 
+import java.util.List;
+
 import com.simsilica.mathd.Quatd;
 import com.simsilica.mathd.Vec3d;
-import java.util.ArrayList;
-import java.util.List;
 
 
 /**
@@ -52,7 +52,7 @@ public class StateBlock {
     private final ZoneKey zone;
     private List<StateEntry> updates;
     private List<Long> removes;
-    
+ 
     public StateBlock( long time, ZoneKey zone ) {
         this.time = time;
         this.zone = zone;
@@ -67,14 +67,16 @@ public class StateBlock {
     }
     
     public void addUpdate( Long entity, Vec3d pos, Quatd rot ) {
-        if( updates == null )
+        if( updates == null ) {
             updates = new ArrayList<>();
+        }
         updates.add( new StateEntry(entity, pos, rot) );
     }
     
     public void removeEntity( Long entity ) {
-        if( removes == null )
+        if( removes == null ) {
             removes = new ArrayList<>();
+        }
         removes.add(entity);
     }
     
@@ -89,7 +91,7 @@ public class StateBlock {
     public List<Long> getRemovals() {
         return removes;
     }
- 
+
     @Override   
     public String toString() {
         StringBuilder sb = new StringBuilder("StateBlock[time=" + time + ", zone=" + zone);
