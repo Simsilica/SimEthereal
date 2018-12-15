@@ -86,6 +86,10 @@ public class ZoneManager {
     private ZoneGrid grid;   
     private final Map<Long, ZoneRange> index = new HashMap<>();
 
+    // Per frame, keep track of the keys we did not get updates for.
+    // Added for no-change support.
+    private Set<Long> noUpdates;
+
     private long updateTime = -1;
 
     // The active zones
@@ -170,7 +174,7 @@ public class ZoneManager {
     protected ZoneRange getZoneRange( Long id, boolean create ) {
         ZoneRange result = index.get(id);
         if( result == null && create ) {
-            result = new ZoneRange();
+            result = new ZoneRange(id);
             index.put(id, result);
         }
         return result;
@@ -188,6 +192,9 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
      *  until endUpdate() is called.
      */
     public void beginUpdate( long time ) {
+        if( log.isTraceEnabled() ) {
+            log.trace("beginUpdate(" + time + ")");
+        }    
         updateStartTime = System.nanoTime();
         updateTime = time;
         
@@ -200,14 +207,21 @@ lastTime = time;*/
 frameCounter++;        
 if( updateStartTime > nextFrameTime ) {
     if( frameCounter < 60 ) {
-        System.out.println("zone update underflow FPS:" + frameCounter);
+        log.warn("zone update underflow FPS:" + frameCounter);
     } else if( frameCounter > 70 ) {
-        System.out.println("zone update overflow FPS:" + frameCounter);
+        log.warn("zone update overflow FPS:" + frameCounter);
     }
     //System.out.println("zone update FPS:" + frameCounter);
     frameCounter = 0;
     nextFrameTime = System.nanoTime() + 1000000000L;
 }
+        // Keep track of the IDs for objects that receive no updates.
+        // (by subtraction)  Added for no-update support.        
+        // Seed it with all known object IDs.
+        noUpdates = new HashSet<>(index.keySet());
+        
+        // Remove any of the pending deletes
+        noUpdates.removeAll(pendingRemoval);
         
         for( Zone z : zones.values() ) {
             z.beginUpdate(time);
@@ -244,7 +258,11 @@ if( updateStartTime > nextFrameTime ) {
      *          it than we could internally.  
      */
     public void updateEntity( Long id, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
- 
+
+        if( log.isTraceEnabled() ) {
+            log.trace("updateEntity(" + id + ", " + active + ", " + p + ")");
+        }
+         
         // If one day you are looking in here and wondering why 'id' is a Long instead of
         // just 'long'... it's because we internally use it as a key for a bunch of things.
         // By exposing the object version to the caller they can avoid the excessive autoboxing
@@ -257,28 +275,51 @@ if( updateStartTime > nextFrameTime ) {
  
         ZoneRange info = getZoneRange(id, true);
         if( !minZone.equals(info.min) || !maxZone.equals(info.max) ) {
-            info.setRange(id, minZone, maxZone);
+            info.setRange(minZone, maxZone);
         }
         
         // Now we blast an update to the zones for any listeners to handle.
-        info.sendUpdate(id, p.clone(), orientation.clone());
+        info.sendUpdate(p.clone(), orientation.clone());
+        
+        // Mark that we've received an update for this object.  Added for no-change support.
+        noUpdates.remove(id);
     }    
  
     /**
      *  Called to end update collection for the current 'frame'.  See: beginUpdate()
      */  
-    public void endUpdate()
-    {
+    public void endUpdate() {
+    
+        log.trace("endUpdate()");
+        
         // If we aren't really collecting history then don't do a commit.
         // We know how the zones push their history so doing this avoids
         // history accumulation.
         if( !collectHistory ) {
             return;
         }
+
+        if( log.isTraceEnabled() ) {
+            log.trace("No-updates for keys:" + noUpdates);
+        }
+        
+        // Go through any of the objects that didn't get updates and send
+        // no-update events.  Added for no-change support.     
+        if( noUpdates != null && !noUpdates.isEmpty() ) {
+            for( Long id : noUpdates ) {
+                ZoneRange info = getZoneRange(id, false);
+                if( info == null ) {
+                    log.warn("No zone range found for no-change key:" + id);
+                    continue;
+                }
+                info.sendNoChange();
+            }
+        } 
     
         // Obtain the general write lock for history
         // For all of the other data structures, we know we
         // are the only reader and so don't need any read locks.
+        log.trace("writing history");        
         historyLock.lock();
         try {
             // If we're about to overlow history then be a little
@@ -302,6 +343,7 @@ if( updateStartTime > nextFrameTime ) {
                 }                 
             }
         } finally {
+            log.trace("done writing history");        
             historyLock.unlock();
         }
         
@@ -373,7 +415,7 @@ if( historySize > high ) {
 
     /**
      *  Let's the zone manager know about a particular entity.  This is
-     *  only required if remove() if used for objects that may come back
+     *  only required if remove() is used for objects that may come back
      *  later... like for objects that enter/leave the zone manager if they
      *  are awake/asleep.  Essentially it just makes sure that the object
      *  isn't pending removal on the next update.
@@ -435,8 +477,7 @@ if( historySize > high ) {
         return result;        
     }
 
-    protected void updateZoneObject( Long id, Vec3d p, Quatd orientation, ZoneKey key )
-    {
+    protected void updateZoneObject( Long id, Vec3d p, Quatd orientation, ZoneKey key ) {
         Zone zone = getZone(key, false);
         if( zone == null ) {
             log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
@@ -498,6 +539,8 @@ if( historySize > high ) {
     }
 
     protected class ZoneRange {
+        Long id;
+    
         Vec3i min;
         Vec3i max;
         
@@ -515,7 +558,13 @@ if( historySize > high ) {
         //
         ZoneKey[] keys = new ZoneKey[8];       
 
-        public ZoneRange() {
+        // For purposes of handling 'no-change' updates, we will keep
+        // the last state we received.  Added for no-updated support.
+        Vec3d lastPosition;
+        Quatd lastOrientation;        
+
+        public ZoneRange( Long id ) {
+            this.id = id;
         }
 
         private boolean contains( int x, int y, int z ) {
@@ -526,7 +575,12 @@ if( historySize > high ) {
             return true;  
         }
 
-        public void sendUpdate( Long id, Vec3d p, Quatd orientation ) {
+        public void sendUpdate( Vec3d p, Quatd orientation ) {
+            // They were cloned before giving them to us, safe
+            // to keep them directly.  Added for no-updated support.
+            lastPosition = p;
+            lastOrientation = orientation;
+            
             if( keys[0] != null ) {
                 updateZoneObject(id, p, orientation, keys[0]);
             }
@@ -541,7 +595,14 @@ if( historySize > high ) {
             }
         }
         
-        public void setRange( Long id, Vec3i newMin, Vec3i newMax ) {
+        public void sendNoChange() {
+            // Nothing special here... just resend the last data.
+            // Someday maybe there is something optimized?  Don't
+            // know what and doesn't matter today.  Added for no-change support.
+            sendUpdate(lastPosition, lastOrientation);
+        }
+        
+        public void setRange( Vec3i newMin, Vec3i newMax ) {
             ZoneKey[] oldKeys = keys.clone();
             
             // We could avoid recreating keys if they are already
