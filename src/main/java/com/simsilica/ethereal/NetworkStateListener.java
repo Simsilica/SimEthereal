@@ -226,7 +226,7 @@ public class NetworkStateListener implements StateListener {
 
     @Override
     public void beginFrame( long time ) {
- 
+    
         if( log.isTraceEnabled() ) {
             log.trace(self + ":beginFrame(" + time + ") selfPosition:" + selfPosition);
         }
@@ -292,6 +292,28 @@ public class NetworkStateListener implements StateListener {
                 // means it probably fell out of any active zones.
                 // Meaning, we moved and that zone's objects are no longer
                 // in our view... and this object doesn't cross a border.
+                //
+                // 2018-12-15: I belive this approach was taken because an
+                // object can be in multiple zones at once... but will generally
+                // only have been updated one time.  So if the object was updated
+                // at all then it must be in at least one of the zones in our view.
+                // It also avoids any sort of chick-and-egg style problems of 
+                // having checked zone membership at the wrong time or whatever.
+                // It has a major downside in that we can't support "no-update" objects.
+                // For example, a physics engine might put an object to sleep and
+                // stop sending us updates for a while... in the current code we'd
+                // consider that a removal when it's really not.
+                // 
+                // The real underlying question is if we want to support objects
+                // that receive no external updates.  I kind of feel like we do.
+                // Besides, I think in the current situation we might leak some stuff
+                // in that it looks outwardly like we've removed the object while internally
+                // we are still tracking it in the global structures.  
+                //
+                // Here we only care about the version and not whether it actually
+                // moved or not.  So as long as the zones update the version of objects
+                // that aren't moving we are clear here.  (And we avoid redoing processing
+                // per-client that's perhaps best done globally.) 
                 if( !so.isMarkedRemoved() && so.getVersion() < time ) {
                     if( log.isDebugEnabled() ) {
                         log.debug("Object no longer in active zones, marking removed:" + so.getEntityId() );
@@ -334,7 +356,7 @@ public class NetworkStateListener implements StateListener {
             log.trace(self + ":stateChanged(" + b + ")");
         }
 
-        // StateBlocks are per zone but contain all of the object
+        // StateBlocks are per zone but contain all of the 
         // objects for a particular time step in that zone.
     
         long time = b.getTime();
@@ -344,6 +366,12 @@ public class NetworkStateListener implements StateListener {
         if( zoneId <= 0 ) {
             System.err.println("No zone ID for changed zone:" + zone + "  received:" + zoneId);
         }
+        
+        if( log.isTraceEnabled() ) {
+            log.trace("stateChanged() zone:" + zone 
+                        + " updates:" + b.getUpdates() 
+                        + " removals:" + b.getRemovals());
+        }        
         
         if( b.getUpdates() != null )  {
         
@@ -355,6 +383,7 @@ public class NetworkStateListener implements StateListener {
                 int networkId = idIndex.getId(e.getEntity(), true);
                 Long entityId = e.getEntity(); 
  
+                // Get or create the shared object for the IDs.
                 SharedObject so = space.getObject(networkId, entityId);
                 if( so.updateState(time, zone, zoneId, null, pos, rot) ) {
                     // If this was 'us' then keep the position for later
