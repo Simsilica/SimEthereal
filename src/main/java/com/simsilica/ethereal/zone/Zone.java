@@ -109,7 +109,7 @@ public class Zone {
      */   
     public boolean commitUpdate() {
         if( log.isTraceEnabled() ) {
-            log.trace(log.info(key + ":commitUpdate() empty:" + current.isEmpty() + "   children:" + children);
+            log.trace(key + ":commitUpdate() empty:" + current.isEmpty() + "   children:" + children);
         }
         if( current.isEmpty() ) {
             // Return true if history is not empty... false otherwise.

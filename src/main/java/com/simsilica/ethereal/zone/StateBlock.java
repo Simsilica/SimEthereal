@@ -36,6 +36,7 @@
 
 package com.simsilica.ethereal.zone;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.simsilica.mathd.Quatd;
