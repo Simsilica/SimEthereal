@@ -144,7 +144,7 @@ public class StateCollector {
     protected void watch( ZoneKey key, StateListener l ) {
         if( log.isTraceEnabled() ) {
             log.trace("watch(" + key + ", " + l + ")");
-        }    
+        }
         getListeners(key, true).add(l);
     }
      
@@ -178,10 +178,12 @@ public class StateCollector {
 
     protected void publish( StateBlock b ) {
         List<StateListener> list = getListeners(b.getZone(), false);
-        if( list == null )
+        if( list == null ) {
             return;
-        for( StateListener l : list )
+        }
+        for( StateListener l : list ) {
             l.stateChanged(b);
+        }
     }
  
     /**
@@ -190,7 +192,8 @@ public class StateCollector {
      *  interested listeners. 
      */   
     protected void publishFrame( StateFrame frame ) {
- 
+        log.trace("publishFrame()");
+
         for( StateListener l : listeners ) {
             if( l.hasChangedZones() ) {
                 List<ZoneKey> exited = l.getExitedZones();
@@ -213,6 +216,7 @@ public class StateCollector {
         for( StateListener l : listeners ) {
             l.endFrame(frame.getTime());
         }            
+        log.trace("end publishFrame()");
     }
  
     /**
@@ -222,6 +226,8 @@ public class StateCollector {
      *  once per "collectionPeriod".
      */   
     protected void collect() {
+        log.trace("collect()");
+            
         // Purge any pending removals
         StateListener remove;
         while( (remove = removed.poll()) != null ) {
@@ -252,6 +258,7 @@ public class StateCollector {
         
 //        end = System.nanoTime();                    
 //        System.out.println( "State published in:" + ((end - start)/1000000.0) + " ms" );
+        log.trace("end collect()");    
     }
  
     /**
