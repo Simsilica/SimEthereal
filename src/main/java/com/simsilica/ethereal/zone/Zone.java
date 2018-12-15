@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
  *  @author    Paul Speed
  */
 public class Zone {
-    static Logger log = LoggerFactory.getLogger(ZoneManager.class);
+    static Logger log = LoggerFactory.getLogger(Zone.class);
     
     private final ZoneKey key;
     private final Set<Long> children = new HashSet<>();
@@ -65,20 +65,32 @@ public class Zone {
     }
     
     public void beginUpdate( long time ) {
+        if( log.isTraceEnabled() ) {
+            log.trace(key + ":beginUpdate(" + time + ")");
+        }    
         current = new StateBlock(time, key);
     }
     
     public void update( Long id, Vec3d pos, Quatd rotation ) {
+        if( log.isTraceEnabled() ) {
+            log.trace(key + ":update(" + id + ", " + pos + ")");
+        }
         current.addUpdate(id, pos, rotation);            
     }
     
     public void addChild( Long id ) {
+        if( log.isTraceEnabled() ) {
+            log.trace(key + ":addChild(" + id + ")");
+        }
         if( !children.add(id) ) {
             log.warn( "Zone already had a body child for id:" + id );
         }         
     }
     
     public void removeChild( Long id ) {
+        if( log.isTraceEnabled() ) {
+            log.trace(key + ":removeChild(" + id + ")");
+        }
         if( !children.remove(id) ) {
             log.warn( "Zone did not have child to remove for id:" + id );
         }             
@@ -96,6 +108,9 @@ public class Zone {
      *        already been obtained and that it is safe to write.
      */   
     public boolean commitUpdate() {
+        if( log.isTraceEnabled() ) {
+            log.trace(log.info(key + ":commitUpdate() empty:" + current.isEmpty() + "   children:" + children);
+        }
         if( current.isEmpty() ) {
             // Return true if history is not empty... false otherwise.
             current = null;            
