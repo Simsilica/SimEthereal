@@ -118,7 +118,7 @@ public class SharedObject {
  
     /**
      *  Returns true if the object is fully marked for removal
-     *  in both the current version and in the baselin (if it exists).
+     *  in both the current version and in the baseline (if it exists).
      *  If the baseline does not exist then this method returns false
      *  since we can never fully remove an object until we at least know
      *  the client and server share a common baseline.
@@ -172,7 +172,7 @@ public class SharedObject {
                                 
         if( time <= this.version ) {
             // We are already more current than the state provided
-            // This can happen when we recent state for the same object multiple
+            // This can happen when we receive state for the same object multiple
             // times... like when the object overlaps two zones that we are watching.
             return false;
         }
@@ -197,8 +197,8 @@ public class SharedObject {
         space.getObjectProtocol().setRotation(current, rot);
         
         return true;
-    } 
-
+    }
+ 
     public boolean updateBaseline( long sequence, ObjectState state ) {
     
         if( baseline == null ) {
