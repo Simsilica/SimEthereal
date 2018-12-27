@@ -3,6 +3,9 @@ Version 1.3.1 (unreleased)
 * Fixed zone ID calculation for non-uniform grids.  See PR #2.
 * Modified ZoneManager to automatically send "no-change" updates for
     objects it is managing but didn't receive updates for.  See PR #5
+* Added a thread-safe BufferedHashSet for creating "one writer, many readers"
+    fast thread safe hash sets.
+* Added a double-buffered thread safe active IDs set to the NetworkStateListener.    
 
 
 Version 1.3.0 (latest)

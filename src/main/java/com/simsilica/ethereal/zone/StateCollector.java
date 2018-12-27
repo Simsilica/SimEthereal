@@ -227,7 +227,7 @@ public class StateCollector {
      */   
     protected void collect() {
         log.trace("collect()");
-            
+ 
         // Purge any pending removals
         StateListener remove;
         while( (remove = removed.poll()) != null ) {
@@ -255,7 +255,7 @@ public class StateCollector {
         for( StateListener l : listeners ) {
             l.endFrameBlock();
         }
-        
+
 //        end = System.nanoTime();                    
 //        System.out.println( "State published in:" + ((end - start)/1000000.0) + " ms" );
         log.trace("end collect()");    

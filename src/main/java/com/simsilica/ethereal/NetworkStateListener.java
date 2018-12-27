@@ -36,10 +36,19 @@
 
 package com.simsilica.ethereal;
 
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jme3.network.HostedConnection;
+
 import com.simsilica.mathd.Quatd;
 import com.simsilica.mathd.Vec3i;
 import com.simsilica.mathd.Vec3d;
+
 import com.simsilica.ethereal.net.ClientStateMessage;
 import com.simsilica.ethereal.net.SentState;
 import com.simsilica.ethereal.net.StateWriter;
@@ -48,14 +57,7 @@ import com.simsilica.ethereal.zone.StateBlock.StateEntry;
 import com.simsilica.ethereal.zone.StateListener;
 import com.simsilica.ethereal.zone.ZoneGrid;
 import com.simsilica.ethereal.zone.ZoneKey;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.simsilica.util.BufferedHashSet;
 
 
 /**
@@ -75,6 +77,8 @@ public class NetworkStateListener implements StateListener {
     private LocalZoneIndex zoneIndex;
     private IdIndex idIndex;
     private SharedObjectSpace space;
+
+    private BufferedHashSet<Long> activeIds = new BufferedHashSet<>();
 
     /**
      *  Keeps track of who 'we' are for proper central zone setting
@@ -130,6 +134,13 @@ public class NetworkStateListener implements StateListener {
     
     public Long getSelf() {
         return self;
+    }
+
+    /**
+     *  Returns the set of all active IDs at this point in time.
+     */
+    public Set<Long> getActiveIds() {
+        return activeIds.getSnapshot();
     }
 
     public ConnectionStats getConnectionStats() {
@@ -245,7 +256,7 @@ public class NetworkStateListener implements StateListener {
         if( log.isTraceEnabled() ) {
             log.trace(self + ":endFrame(" + time + ") selfPosition:" + selfPosition);
         }
-        
+
         // See if we've gotten any ACKs to add to our ACK header
         ClientStateMessage ackedMsg;
         while( (ackedMsg = acked.poll()) != null ) {
@@ -329,6 +340,10 @@ public class NetworkStateListener implements StateListener {
                     }
                     it.remove();
                     idIndex.retireId(so.getNetworkId());
+                    
+                    activeIds.remove(so.getEntityId());
+                } else {
+                    activeIds.add(so.getEntityId());
                 } 
                 
             } 
@@ -345,7 +360,9 @@ public class NetworkStateListener implements StateListener {
             if( zoneIndex.setCenter(selfPosition, entered, exited) ) {
                 zonesChanged = true;
             }
-        }                         
+        }
+ 
+        activeIds.commit();                                
     }
 
 
@@ -373,8 +390,7 @@ public class NetworkStateListener implements StateListener {
                         + " removals:" + b.getRemovals());
         }        
         
-        if( b.getUpdates() != null )  {
-        
+        if( b.getUpdates() != null )  {        
             for( StateEntry e : b.getUpdates() ) {
             
                 Vec3d pos = e.getPosition();
@@ -397,6 +413,7 @@ public class NetworkStateListener implements StateListener {
                 log.trace(self + ":No updates");
             }
         }
+        
         if( b.getRemovals() != null ) {
             for( Long e : b.getRemovals() )
                 {
@@ -414,7 +431,6 @@ public class NetworkStateListener implements StateListener {
                 }                
                 so.markRemoved(time);
             }
-        }            
-    
+        }             
     } 
 }
