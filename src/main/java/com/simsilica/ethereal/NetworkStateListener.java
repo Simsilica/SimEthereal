@@ -341,6 +341,19 @@ public class NetworkStateListener implements StateListener {
                     it.remove();
                     idIndex.retireId(so.getNetworkId());
                     
+                    // Dear future-Paul, if you are here because you are trying
+                    // to figure out why a removed object didn't actually get
+                    // removed from the activeIds (and thus not removed on the client)
+                    // note that if there are no other moving objects in the space
+                    // the frame updates stop happening.  There are no frame times
+                    // and so StateCollector stops calling us at all.
+                    // I've left it this way because it is extremely unreastic
+                    // that NO objects would be moving anywhere in the space...
+                    // especially since typically the player itself is an object
+                    // moving in the space.  Fixing it is non-trivial and incurs
+                    // a small overhead all the time just to support this unlikely
+                    // use-case.  But hopefully this comment will save you a couple
+                    // hours of debug logging if you forget why it's like that.  
                     activeIds.remove(so.getEntityId());
                 } else {
                     activeIds.add(so.getEntityId());

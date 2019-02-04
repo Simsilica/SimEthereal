@@ -95,6 +95,7 @@ public class BufferedHashSet<E> implements Set<E> {
      *  Called from the writing thread to apply the buffer changes
      *  to the readable view.
      */
+    @SuppressWarnings("unchecked")
     public void commit() {
         assert checkThread() : badThreadMessage();
         delegate = buffer;

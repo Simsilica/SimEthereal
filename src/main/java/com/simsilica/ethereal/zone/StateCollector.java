@@ -208,7 +208,7 @@ public class StateCollector {
             }            
             l.beginFrame(frame.getTime());
         }
-            
+
         for( StateBlock b : frame ) {
             publish( b );
         }
@@ -248,7 +248,7 @@ public class StateCollector {
         for( StateFrame f : frames ) {
             if( f == null ) {
                 continue;
-            }
+            }            
             publishFrame(f);
         }
             

@@ -231,7 +231,7 @@ if( updateStartTime > nextFrameTime ) {
         for( Long id : pendingRemoval ) {
             if( log.isDebugEnabled() ) {
                 log.debug("ZONE:  --- delayed deactivation:" + id);
-            }            
+            }
             ZoneRange range = index.remove(id);
             if( log.isDebugEnabled() ) {
                 log.debug("range:" + range);
@@ -439,7 +439,7 @@ if( historySize > high ) {
         ZoneRange range = index.get(id);
         if( log.isDebugEnabled() ) {
             log.debug("range:" + range);
-        }        
+        }
         if( range == null ) {
             return;
         }
