@@ -9,6 +9,8 @@ Version 1.3.1 (unreleased)
 * Added a thread-safe BufferedHashSet for creating "one writer, many readers"
     fast thread safe hash sets.
 * Added a double-buffered thread safe active IDs set to the NetworkStateListener.    
+* Added an error log message when updating an object with a bounds bigger than
+    supported by the current grid settings.
 
 
 Version 1.3.0 (latest)

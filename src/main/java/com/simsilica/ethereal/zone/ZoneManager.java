@@ -275,6 +275,18 @@ if( updateStartTime > nextFrameTime ) {
  
         ZoneRange info = getZoneRange(id, true);
         if( !minZone.equals(info.min) || !maxZone.equals(info.max) ) {
+        
+            // Check the range to see if it's too large... this indicates that
+            // the bounds is too big for the grid spacing.
+            if( maxZone.x - minZone.x > 1
+                || maxZone.y - minZone.y > 1  
+                || maxZone.z - minZone.z > 1 ) {
+                log.error("Object:" + id + " Range too big:" + minZone + " -> " + maxZone 
+                          + " from bounds:" + bounds
+                          + " grid size:" + grid.getZoneSize() 
+                          + " likely too small for object with extents:" + bounds.getExtents());
+            }  
+            
             info.setRange(minZone, maxZone);
         }
         
@@ -604,7 +616,7 @@ if( historySize > high ) {
         
         public void setRange( Vec3i newMin, Vec3i newMax ) {
             ZoneKey[] oldKeys = keys.clone();
-            
+ 
             // We could avoid recreating keys if they are already
             // set but the logic is tricky to get right and it's 
             // not called very often anyway.
