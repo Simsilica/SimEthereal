@@ -1,3 +1,7 @@
+Version 1.5.0 (unreleased)
+--------------
+
+
 Version 1.4.0 (latest)
 --------------
 * Fixed zone ID calculation for non-uniform grids.  See PR #2.
@@ -8,17 +12,17 @@ Version 1.4.0 (latest)
     leaving extra garbage around and so not really a solution.)
 * Added a thread-safe BufferedHashSet for creating "one writer, many readers"
     fast thread safe hash sets.
-* Added a double-buffered thread safe active IDs set to the NetworkStateListener.    
+* Added a double-buffered thread safe active IDs set to the NetworkStateListener.
 * Added an error log message when updating an object with a bounds bigger than
     supported by the current grid settings.
 
 
-Version 1.3.0 
+Version 1.3.0
 --------------
 * Fixed a bug where the newer state messages would fail if the game hadn't
     already registered Vec3d as a serializable class.
 * Fixed NetworkStateListener to properly pay attention to zone extents.
-* Fixed EtherealHost to pass the specified client zone extents on to the 
+* Fixed EtherealHost to pass the specified client zone extents on to the
     NetworkStateListener.
 * Added additional trace logging to NetworkStateListener.
 * Fixed an issue where raw nanoTime() was being used to timestamp messages.
@@ -28,7 +32,7 @@ Version 1.3.0
     a SynchedTimeSource interface to provide the extra drift/offset methods
     that it previously had.  RemoteTimeSource now implements SynchedTimeSource.
 * Upgraded to sim-math 1.2.0
-* Set sourceCompatibility to 1.7   
+* Set sourceCompatibility to 1.7
 
 
 Version 1.2.1
@@ -46,11 +50,11 @@ Version 1.2.1
     the average ping time, percentage of missed ACKs, and the average message size.
 * Modified the StateReceiver to add message size stats to a Statistics tracker.  This
     let's clients see the average and total message sizes.
-* Modified the build.gradle to replace the JME version with a specific 
+* Modified the build.gradle to replace the JME version with a specific
     version instead of letting it float.  I think alpha4 is generally
-    the minimum accepted 3.1 version at this point. 
+    the minimum accepted 3.1 version at this point.
     Did the same for all of the floating version references.
-    
+
 
 Version 1.1.1
 --------------
@@ -63,7 +67,7 @@ Version 1.1.1
     New way:
         getService(EtherealHost.class).startHostingOnConnection(conn);
         getService(EtherealHost.class).setConnectionObject(conn, ship.getId(), new Vec3d())
-* Improved an exception message on LocalZoneIndex's out of bounds checking.    
+* Improved an exception message on LocalZoneIndex's out of bounds checking.
 * Improved an exception message in FrameStat's split() regarding a failure to split.  The message
     now includes the caller specified limit so we can see if it's even a sane value in these
     error cases.
@@ -73,7 +77,7 @@ Version 1.1.1
     a ton of comments in place.
 * Added a StateWriter.get/setMaxMessageSize() method(s) for controlling the MTU size used
     to calculate when messages are split.  So even if the above fix doesn't work then callers
-    can effectively turn off the split behavior by setting a huge max message size.     
+    can effectively turn off the split behavior by setting a huge max message size.
 * Exposed get/setMaxMessageSize() at the NetworkStateListener level so that application code
     might set this value on its own, or even dynamically, based on application-specific
     requirements.
