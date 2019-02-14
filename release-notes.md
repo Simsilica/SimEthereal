@@ -1,4 +1,4 @@
-Version 1.3.1 (unreleased)
+Version 1.4.0 (latest)
 --------------
 * Fixed zone ID calculation for non-uniform grids.  See PR #2.
 * Modified ZoneManager to automatically send "no-change" updates for
@@ -13,7 +13,7 @@ Version 1.3.1 (unreleased)
     supported by the current grid settings.
 
 
-Version 1.3.0 (latest)
+Version 1.3.0 
 --------------
 * Fixed a bug where the newer state messages would fail if the game hadn't
     already registered Vec3d as a serializable class.
