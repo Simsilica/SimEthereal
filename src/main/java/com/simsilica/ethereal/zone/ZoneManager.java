@@ -110,6 +110,11 @@ public class ZoneManager {
     private long updateStartTime = 0;
     private long totalUpdateTime = 0; 
 
+    // Control which ZoneRange implementation is used... currently
+    // there are only two and we'll default to the older better-tested
+    // one for a while.
+    private boolean dynamicZoneRange = false;
+
     /**
      *  Creates a new ZoneManager with a ZoneGrid sized using zoneSize and
      *  with a history backlog of 12 frames.
@@ -149,6 +154,27 @@ public class ZoneManager {
     }
 
     /**
+     *  Set to true to support objects that are larger than the grid spacing.
+     *  This is a new experimental feature that may become the default behavior
+     *  someday.  In the mean time, applications have to specifically turn it
+     *  on because the new code is less tested.
+     *  The older internal zone range implementation would not support objects
+     *  that spanned more than two zones in any direction (and will log an error
+     *  when it encounters this).  The thinking was that it could use a fixed size
+     *  array and avoid constantly recreating it.  The thing is it was always 
+     *  cloning it internally anyway whenever the range changed.
+     *  The new code builds its array dynamically and can essentially support
+     *  any zone range.  It's probably just as good and just as memory efficient.
+     */
+    public void setSupportLargeObjects( boolean b ) {
+        this.dynamicZoneRange = b;
+    }
+    
+    public boolean getSupportLargeObjects() {
+        return dynamicZoneRange;
+    }
+
+    /**
      *  Set to true if history should be collected or false if object updates
      *  should be ignored.  This method is used internal to the framework for
      *  managing the lifecycle of dependent components.  When a ZoneManager is 
@@ -174,7 +200,11 @@ public class ZoneManager {
     protected ZoneRange getZoneRange( Long id, boolean create ) {
         ZoneRange result = index.get(id);
         if( result == null && create ) {
-            result = new ZoneRange(id);
+            if( dynamicZoneRange ) {
+                result = new DynamicZoneRange(id);
+            } else {
+                result = new OctZoneRange(id);
+            }
             index.put(id, result);
         }
         return result;
@@ -273,25 +303,19 @@ if( updateStartTime > nextFrameTime ) {
         Vec3i minZone = grid.worldToZone(bounds.getMin()); 
         Vec3i maxZone = grid.worldToZone(bounds.getMax()); 
  
-        ZoneRange info = getZoneRange(id, true);
-        if( !minZone.equals(info.min) || !maxZone.equals(info.max) ) {
+        ZoneRange range = getZoneRange(id, true);
+        if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
         
-            // Check the range to see if it's too large... this indicates that
-            // the bounds is too big for the grid spacing.
-            if( maxZone.x - minZone.x > 1
-                || maxZone.y - minZone.y > 1  
-                || maxZone.z - minZone.z > 1 ) {
-                log.error("Object:" + id + " Range too big:" + minZone + " -> " + maxZone 
+            if( !range.setRange(minZone, maxZone) ) {
+                log.error("Error setting range for object:" + id 
                           + " from bounds:" + bounds
                           + " grid size:" + grid.getZoneSize() 
                           + " likely too small for object with extents:" + bounds.getExtents());
-            }  
-            
-            info.setRange(minZone, maxZone);
+            }
         }
         
         // Now we blast an update to the zones for any listeners to handle.
-        info.sendUpdate(p.clone(), orientation.clone());
+        range.sendUpdate(p.clone(), orientation.clone());
         
         // Mark that we've received an update for this object.  Added for no-change support.
         noUpdates.remove(id);
@@ -319,12 +343,12 @@ if( updateStartTime > nextFrameTime ) {
         // no-update events.  Added for no-change support.     
         if( noUpdates != null && !noUpdates.isEmpty() ) {
             for( Long id : noUpdates ) {
-                ZoneRange info = getZoneRange(id, false);
-                if( info == null ) {
+                ZoneRange range = getZoneRange(id, false);
+                if( range == null ) {
                     log.warn("No zone range found for no-change key:" + id);
                     continue;
                 }
-                info.sendNoChange();
+                range.sendNoChange();
             }
         } 
     
@@ -550,7 +574,26 @@ if( historySize > high ) {
         return new ZoneKey(grid, x, y, z);
     }
 
-    protected class ZoneRange {
+
+    protected interface ZoneRange {
+        public Vec3i getMin();
+        public Vec3i getMax();
+        public boolean setRange( Vec3i newMin, Vec3i newMax );
+        public void sendUpdate( Vec3d p, Quatd orientation );
+        public void sendNoChange();
+        public void leave( Long id );
+    }
+
+    /**
+     *  The original ZoneRange implementation that maxed out
+     *  at 8 zones, ie: 2x2x2.  It keeps a fixed array of zone keys
+     *  and nulls out the ones that aren't being used.
+     *  I think the original thinking was that we avoid array creation
+     *  churn... but it also limits the size of objects to never be any
+     *  bigger than a zone cell.  Besides which we are recreating
+     *  keys at least as often as we might the array.
+     */
+    protected final class OctZoneRange implements ZoneRange {
         Long id;
     
         Vec3i min;
@@ -575,8 +618,18 @@ if( historySize > high ) {
         Vec3d lastPosition;
         Quatd lastOrientation;        
 
-        public ZoneRange( Long id ) {
+        public OctZoneRange( Long id ) {
             this.id = id;
+        }
+
+        @Override    
+        public Vec3i getMin() {
+            return min;
+        }
+        
+        @Override    
+        public Vec3i getMax() {
+            return max;
         }
 
         private boolean contains( int x, int y, int z ) {
@@ -587,6 +640,7 @@ if( historySize > high ) {
             return true;  
         }
 
+        @Override    
         public void sendUpdate( Vec3d p, Quatd orientation ) {
             // They were cloned before giving them to us, safe
             // to keep them directly.  Added for no-updated support.
@@ -607,6 +661,7 @@ if( historySize > high ) {
             }
         }
         
+        @Override    
         public void sendNoChange() {
             // Nothing special here... just resend the last data.
             // Someday maybe there is something optimized?  Don't
@@ -614,7 +669,19 @@ if( historySize > high ) {
             sendUpdate(lastPosition, lastOrientation);
         }
         
-        public void setRange( Vec3i newMin, Vec3i newMax ) {
+        @Override    
+        public boolean setRange( Vec3i newMin, Vec3i newMax ) {
+
+            boolean result = true; 
+            // Check the range to see if it's too large... this indicates that
+            // the bounds is too big for the grid spacing.
+            if( newMax.x - newMin.x > 1
+                || newMax.y - newMin.y > 1  
+                || newMax.z - newMin.z > 1 ) {
+                log.error("OctZoneRange: Range too big:" + newMin + " -> " + newMax);
+                result = false;
+            }
+        
             ZoneKey[] oldKeys = keys.clone();
  
             // We could avoid recreating keys if they are already
@@ -658,8 +725,8 @@ if( historySize > high ) {
                 // just enter all of them.
                 this.min = newMin;            
                 this.max = newMax;
-                enter( id );
-                return;            
+                enter(id);
+                return result;            
             }
  
             enterMissing( id, newMin, newMax, keys );
@@ -670,6 +737,8 @@ if( historySize > high ) {
             this.max = newMax;            
  
             leaveMissing( id, oldMin, oldMax, oldKeys );
+            
+            return result;
         } 
 
         private void enter( Long id ) {
@@ -681,9 +750,10 @@ if( historySize > high ) {
             }       
         }
 
+        @Override    
         public void leave( Long id ) {
             if( log.isDebugEnabled() ) {
-                log.debug("ZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
+                log.debug("OctZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
             }        
             for( ZoneKey key : keys ) {
                 if( key != null ) {
@@ -702,7 +772,7 @@ if( historySize > high ) {
             }       
         }
 
-        public void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys ) {
+        private void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys ) {
             // See which old zone keys are not in the current range
             for( ZoneKey key : zoneKeys ) {
                 if( key != null && !contains(key.x, key.y, key.z) ) {
@@ -711,7 +781,154 @@ if( historySize > high ) {
             }
         }
         
+    }
+    
+    protected final class DynamicZoneRange implements ZoneRange {
+        Long id;
+    
+        Vec3i min;
+        Vec3i max;
+        
+        ZoneKey[] keys = new ZoneKey[0];
+        int keyCount; 
+
+        // For purposes of handling 'no-change' updates, we will keep
+        // the last state we received.  Added for no-updated support.
+        Vec3d lastPosition;
+        Quatd lastOrientation;        
+
+        public DynamicZoneRange( Long id ) {
+            this.id = id;
+        }
+
+        @Override    
+        public Vec3i getMin() {
+            return min;
+        }
+        
+        @Override    
+        public Vec3i getMax() {
+            return max;
+        }
+
+        private boolean contains( int x, int y, int z ) {
+            if( x < min.x || y < min.y || z < min.z )
+                return false;
+            if( x > max.x || y > max.y || z > max.z )            
+                return false;
+            return true;  
+        }
+
+        @Override    
+        public void sendUpdate( Vec3d p, Quatd orientation ) {
+            // They were cloned before giving them to us, safe
+            // to keep them directly.  Added for no-updated support.
+            lastPosition = p;
+            lastOrientation = orientation;
+ 
+            for( int i = 0; i < keyCount; i++ ) {
+                updateZoneObject(id, p, orientation, keys[i]);
+            }
+        }
+        
+        @Override    
+        public void sendNoChange() {
+            // Nothing special here... just resend the last data.
+            // Someday maybe there is something optimized?  Don't
+            // know what and doesn't matter today.  Added for no-change support.
+            sendUpdate(lastPosition, lastOrientation);
+        }
+        
+        @Override    
+        public boolean setRange( Vec3i newMin, Vec3i newMax ) {
+
+            ZoneKey[] oldKeys = keys.clone();
+            int oldKeyCount = keyCount;
+
+            int xSize = newMax.x - newMin.x + 1;
+            int ySize = newMax.y - newMin.y + 1;
+            int zSize = newMax.z - newMin.z + 1;
+            
+            int size = xSize * ySize * zSize;
+            if( oldKeys.length < size || oldKeys.length > size * 2 ) {
+                // Grow or shrink it.  We shrink if our keys are less than
+                // half the old size just to avoid taking up too much RAM.
+                // ...and to avoid potential memory explosions for large objects
+                // that never shrink again.
+                keys = new ZoneKey[size];
+            }
+            keyCount = size;
+            
+            int index = 0;
+            for( int i = 0; i < xSize; i++ ) {
+                for( int j = 0; j < ySize; j++ ) {
+                    for( int k = 0; k < zSize; k++ ) {
+                        keys[index] = createKey(newMin.x + i, newMin.y + j, newMin.z + k);
+                        index++;
+                    }
+                }
+            }
+            
+            if( this.min == null ) {
+                // Then this is the first time and we can be optimized to
+                // just enter all of them.
+                this.min = newMin;            
+                this.max = newMax;
+                enter(id);
+                return true;            
+            }
+ 
+            enterMissing(id, newMin, newMax, keys, keyCount);
+ 
+            Vec3i oldMin = this.min;
+            Vec3i oldMax = this.max;               
+            this.min = newMin;            
+            this.max = newMax;            
+ 
+            leaveMissing(id, oldMin, oldMax, oldKeys, oldKeyCount);
+            
+            return true;
+        } 
+
+        private void enter( Long id ) { 
+            for( int i = 0; i < keyCount; i++ ) {
+                enterZone(id, keys[i]);
+            }       
+        }
+
+        @Override    
+        public void leave( Long id ) {
+            if( log.isDebugEnabled() ) {
+                log.debug("DynamicZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
+            }        
+            for( int i = 0; i < keyCount; i++ ) {
+                leaveZone(id, keys[i]);
+            }
+        }                
+ 
+        private void enterMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
+ 
+            // See which new zone keys are not in the current range
+            for( int i = 0; i < count; i++ ) {
+                ZoneKey key = zoneKeys[i];
+                if( !contains(key.x, key.y, key.z) ) {
+                    enterZone(id, key);   
+                }
+            }       
+        }
+
+        private void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
+            // See which old zone keys are not in the current range
+            for( int i = 0; i < count; i++ ) {
+                ZoneKey key = zoneKeys[i];
+                if( !contains(key.x, key.y, key.z) ) {
+                    leaveZone(id, key);   
+                }
+            }
+        }
+        
     }    
+
 }
 
  

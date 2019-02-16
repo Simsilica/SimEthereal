@@ -97,6 +97,7 @@ public class EtherealHost extends AbstractHostedConnectionService {
         this.objectProtocol = objectProtocol;
         this.grid = grid;
         this.clientZoneExtents = clientZoneExtents;
+        this.zones = new ZoneManager(grid);
         
         Serializer.registerClasses(ClientStateMessage.class, ObjectStateMessage.class); 
         Serializer.registerClass(Vec3d.class, new FieldSerializer());        
@@ -176,7 +177,6 @@ public class EtherealHost extends AbstractHostedConnectionService {
 
     @Override
     protected void onInitialize( HostedServiceManager s ) {
-        this.zones = new ZoneManager(grid);
         this.stateCollector = new StateCollector(zones, stateCollectionInterval);       
         stateCollector.setIdleSleepTime(stateCollectionSleepTime);
         

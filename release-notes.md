@@ -1,5 +1,19 @@
 Version 1.5.0 (unreleased)
 --------------
+* Internally moved ZoneManager creation to the EtherealHost constructor
+    so that it could be accessed prior to EtherealHost service initialization.
+* Refactored ZoneManager to allow different internal ZoneRange implementations.
+    Renamed the old internal ZoneRange to OctZoneRange to denote that it can
+    track a maximum of eight zones per object (2x2x2).  This limited objects
+    to never be bigger than a zone.
+* Modified ZoneManager to have a new internal DynamicZoneRange that can
+    support objects of virtually any size relative to zone size.  (Subject
+    to positional bit resolution, etc.)
+* Added a (hopefully temporary) ZoneManager.setSupportLargeObjects() that 
+    defaults to false.  When true this will use the new DynamicZoneRange.
+    This defaults to false because the older (uglier) ZoneRange code has
+    had a LOT more real world testing.  Note: the new code is actually way
+    cleaner and more elegant.
 
 
 Version 1.4.0 (latest)
