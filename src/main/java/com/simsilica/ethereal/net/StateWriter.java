@@ -105,6 +105,14 @@ public class StateWriter {
     private TimeSource timeSource;
     
     private ConnectionStats stats;
+
+    // Keep track of some stats to help us improve the
+    // received acks watchdog 
+    private int mostRecentAckedMessageId;
+    private int maxMessageDelta; 
+
+    // Keep track of the number of times we have to split a frame, if any
+    private int messagesPerFrame;
     
     public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol, TimeSource timeSource, ConnectionStats stats ) {
         this.conn = conn;
@@ -130,7 +138,21 @@ public class StateWriter {
     }     
 
     public SentState ackSentState( int messageId ) {
-    
+     
+        if( log.isTraceEnabled() ) {
+            log.trace("ackSentState(" + messageId + ")");            
+            log.trace("  sentStates.size():" + sentStates.size() + "  recAcks.size():" + receivedAcks.size());
+        }
+        
+        // Keep track of the most recent message ID that has been ACK'ed just
+        // so we can use the lag amount for other checks.
+        if( messageId > mostRecentAckedMessageId ) {
+            if( log.isTraceEnabled() ) {
+                log.trace("updating mostRecentAckedMessageId to:" + messageId);
+            }
+            mostRecentAckedMessageId = messageId;
+        }
+
         if( sentStates.isEmpty() ) {
             return null;
         }
@@ -142,8 +164,13 @@ public class StateWriter {
         // anyway.
         for( Iterator<SentState> it = sentStates.iterator(); it.hasNext(); ) {
             SentState s = it.next();
-            
+            if( log.isTraceEnabled() ) {
+                log.trace("  checking:" + s.messageId + " and " + messageId);
+            }            
             if( s.messageId == messageId ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("     found:" + messageId);
+                }            
                 // This is the one we wanted to see
                 
                 // So, we have received an ACK for a message that we
@@ -153,11 +180,17 @@ public class StateWriter {
                 // anymore and can remove them from our ACK header
                 if( s.acked != null ) {
                     for( int ack : s.acked ) {
-                        receivedAcks.remove(ack);
+                        boolean b = receivedAcks.remove(ack);
+                        if( b && log.isTraceEnabled() ) {
+                            log.trace("       removed recvd ack:" + ack);
+                        }                    
                         receivedAcksArray = null;
                     }
                 }
-                
+ 
+                if( log.isTraceEnabled() ) {
+                    log.trace("       adding recvd ack:" + messageId);
+                }                    
                 // Now we need to start ACKing this message
                 receivedAcks.add(messageId);
                 receivedAcksArray = null;
@@ -171,7 +204,7 @@ public class StateWriter {
             // If our passed messageId is before this message's ID then
             // it is in the future and we will not find what we are looking
             // for.  The sent states list is in send order.
-            if( messageId < s.messageId ) { //isBefore(messageId, s.messageId) ) {
+            if( messageId < s.messageId ) { //isBefore(messageId, s.messageId) ) {            
                 // Probably we received this messageId after we purged
                 // it from getting a later messageId. ie: out of order messages.
                 
@@ -186,17 +219,24 @@ public class StateWriter {
                 // ignore acks older than a certain level and search back from
                 // newest first (the caller that is) but one message might not
                 // have the complete state that another has part of.
+ 
+                // Adding a log to see if I see this in the wild.  2019-02-24
+                log.info("messageId:" + messageId + " is earlier than s.messageId:" + s.messageId);                           
                 
                 return null;
             }
-            
+
+            if( log.isTraceEnabled() ) {
+                log.trace("    expiring:" + s.messageId);
+            }
+                        
             // Finally, remove this element as it's older than what we've
             // been searching for and we only want the latest stuff
             it.remove();             
         }
  
         // We didn't find it.
-        return null; 
+        return null;
     }
 
     public void startFrame( long time, ZoneKey centerZone ) throws IOException {
@@ -211,7 +251,12 @@ public class StateWriter {
     
         // End any previous frame that we might be in the middle of    
         endFrame();
-        
+ 
+        // Reset the message counter.  We use this to see how many messages
+        // we split a frame into.  Note: it could stay 0 if we are stacking
+        // multiple frames into a single message.        
+        messagesPerFrame = 0;
+                
         // Make sure we have a current message started
         startMessage();
             
@@ -239,14 +284,46 @@ public class StateWriter {
             return;
         }
         
+        if( log.isTraceEnabled() ) {
+            log.trace("startMessage() frameTime:" + frameTime);
+        }
+
+        // Keep track of the number of messages we open between startFrame() and
+        // endFrame()
+        messagesPerFrame++;
+
+        // Calculate the 'lag' between the messages IDs we've received
+        // versus the message IDs that we've sent out.  We will use this
+        // to track a better max received acks for the watchdog check.
+        // Note: we track the max message delta because it can take quite
+        // a few messages back before we've fully cleared a wide delta.
+        // So for example if the message lag is 170+ it could be a few acks
+        // before we've cleared that but meanwhile we might have caught
+        // up on current messages and only be lagging by 1 or 2.
+        int msgDelta = nextMessageId - mostRecentAckedMessageId;
+        if( msgDelta > maxMessageDelta ) {
+            maxMessageDelta = msgDelta;
+        }               
+        
         // Just in case we'll put a watchdog in here.  The reason this
         // is unlikely to trigger is because the receivedAcks set only
         // grows when we've received a message from the client.  And at
         // that point we get to remove every receivedAck the client 
         // confirms.  So one new ID should always nearly empty the set.
-        int size = receivedAcks.size(); 
-        if( size >= 128 ) {
-            throw new RuntimeException( "Very bad things have happened in the receivedAcks set." );
+        int size = receivedAcks.size();
+        if( log.isTraceEnabled() ) {
+            log.trace("startMessage() -> receivedAcks.size():" + receivedAcks.size() 
+                + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
+                + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
+        }
+        //if( size >= 128 ) {
+        // It's possible that for large lag between ACK messages and sent messages
+        // that the received acks can be sizeable without indicating a problem.
+        // If we've only seen message ID #500 ack'ed but we just sent out message ID
+        // #700 then of course there are going to be a lot of missing double-acks.
+        // At LEAST 200.
+        if( size - maxMessageDelta >= 128 ) {
+            throw new RuntimeException("Very bad things have happened in the receivedAcks set.");
         }       
  
         // Build the ACKs array
@@ -260,6 +337,15 @@ public class StateWriter {
  
         this.outbound = new SentState(-1, receivedAcksArray, new ArrayList<FrameState>());
         this.headerBits = outbound.getEstimatedHeaderSize();
+        //log.info("Estimated header size:" + (headerBits/8.0) + " bytes including:" + receivedAcksArray.length + " recvd ACKS.");
+ 
+        int bytes = headerBits/8;        
+        if( bytes > bufferSize ) {       
+            log.error("State header size exceeds max buffer size, including:" + receivedAcksArray.length + " recvd ACKS.");
+        } else if( bytes > (bufferSize/2) ) {
+            log.warn("State header size exceeds half max buffer size, including:" + receivedAcksArray.length + " recvd ACKS.");
+        } 
+                
         this.estimatedSize = headerBits;       
     }
 
@@ -272,6 +358,12 @@ public class StateWriter {
         if( currentFrame == null ) {
             // Nothing to do
             return;
+        }
+        
+        if( outbound == null ) {
+            // I've seen this happen once but I think it was likely because of
+            // the runtime exception in startMessage(). 
+            throw new RuntimeException("endFrame() called without an open startMessage()");
         }    
 
         // One of the following cases is true:
@@ -288,6 +380,9 @@ public class StateWriter {
             outbound.frames.add(currentFrame);
             estimatedSize += frameSize;
             currentFrame = null;
+            if( log.isTraceEnabled() ) {
+                log.trace("frame in size remaining.  Messages per frame:" + messagesPerFrame);
+            }            
             return;
         }
                    
@@ -427,6 +522,9 @@ public class StateWriter {
         }
         
         currentFrame = null;
+        if( log.isTraceEnabled() ) {
+            log.trace("end of split frame.  Messages per frame:" + messagesPerFrame);
+        }            
     }
 
     protected void endMessage() throws IOException {
@@ -438,7 +536,10 @@ public class StateWriter {
         ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);        
         msg.setState(outbound, objectProtocol);
         sentStates.add(outbound);
-  
+        
+        if( log.isTraceEnabled() ) {
+            log.trace("Sending message ID:" + id);
+        }  
         conn.send(msg);
   
         stats.addMessageSize(ObjectStateMessage.HEADER_SIZE + msg.getBuffer().length);

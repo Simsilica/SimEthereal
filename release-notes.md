@@ -14,6 +14,9 @@ Version 1.5.0 (unreleased)
     This defaults to false because the older (uglier) ZoneRange code has
     had a LOT more real world testing.  Note: the new code is actually way
     cleaner and more elegant.
+* Modified the "received acks" watchdog in StateWriter to take message ID lag
+    into account.  This should fix the cases where the exception would be
+    thrown for cases where client ACKs are just lagging by a wide margin.    
 
 
 Version 1.4.0 (latest)
