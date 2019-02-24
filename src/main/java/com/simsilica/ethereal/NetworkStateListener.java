@@ -217,6 +217,9 @@ public class NetworkStateListener implements StateListener {
             }
         }
         
+        if( log.isTraceEnabled() ) {
+            log.trace("received message:" + m.getId());
+        }        
         acked.add(m);
     }     
 
@@ -255,8 +258,9 @@ public class NetworkStateListener implements StateListener {
     
         if( log.isTraceEnabled() ) {
             log.trace(self + ":endFrame(" + time + ") selfPosition:" + selfPosition);
+            log.trace("endFrame() acked queue size:" + acked.size());
         }
-
+        
         // See if we've gotten any ACKs to add to our ACK header
         ClientStateMessage ackedMsg;
         while( (ackedMsg = acked.poll()) != null ) {
