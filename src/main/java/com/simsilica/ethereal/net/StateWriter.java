@@ -37,15 +37,13 @@
 package com.simsilica.ethereal.net;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 
 import org.slf4j.*;
 
 import com.jme3.network.HostedConnection;
+
+import com.simsilica.mathd.util.*;
 
 import com.simsilica.ethereal.ConnectionStats;
 import com.simsilica.ethereal.TimeSource;
@@ -76,8 +74,8 @@ public class StateWriter {
     // Track the ACKs we've received but that we've haven't received
     // a double-ack for yet.  We include these in every message header
     // until we see an ACK for a message that already included them. 
-    private final Set<Integer> receivedAcks = new TreeSet<>();
-    private int[] receivedAcksArray = null;
+    private final IntRangeSet receivedAcks = new IntRangeSet();
+    private IntRange[] receivedAcksArray = null;
 
     // Frame header information.
     private long frameTime;
@@ -179,10 +177,10 @@ public class StateWriter {
                 // sent as part of that message.  We don't need to send them
                 // anymore and can remove them from our ACK header
                 if( s.acked != null ) {
-                    for( int ack : s.acked ) {
+                    for( IntRange ack : s.acked ) {
                         boolean b = receivedAcks.remove(ack);
                         if( b && log.isTraceEnabled() ) {
-                            log.trace("       removed recvd ack:" + ack);
+                            log.trace("       removed recvd acks:" + ack);
                         }                    
                         receivedAcksArray = null;
                     }
@@ -232,6 +230,7 @@ public class StateWriter {
                         
             // Finally, remove this element as it's older than what we've
             // been searching for and we only want the latest stuff
+log.warn("Removing old unmatched message:" + s.messageId);            
             it.remove();             
         }
  
@@ -304,46 +303,58 @@ public class StateWriter {
         if( msgDelta > maxMessageDelta ) {
             maxMessageDelta = msgDelta;
         }               
-        
-        // Just in case we'll put a watchdog in here.  The reason this
-        // is unlikely to trigger is because the receivedAcks set only
-        // grows when we've received a message from the client.  And at
-        // that point we get to remove every receivedAck the client 
-        // confirms.  So one new ID should always nearly empty the set.
-        int size = receivedAcks.size();
-        if( log.isTraceEnabled() ) {
-            log.trace("startMessage() -> receivedAcks.size():" + receivedAcks.size() 
-                + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
-                + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
-        }
-        //if( size >= 128 ) {
-        // It's possible that for large lag between ACK messages and sent messages
-        // that the received acks can be sizeable without indicating a problem.
-        // If we've only seen message ID #500 ack'ed but we just sent out message ID
-        // #700 then of course there are going to be a lot of missing double-acks.
-        // At LEAST 200.
-        if( size - maxMessageDelta >= 128 ) {
-            throw new RuntimeException("Very bad things have happened in the receivedAcks set.");
-        }       
  
         // Build the ACKs array
         if( receivedAcksArray == null ) {
-            receivedAcksArray = new int[size];
-            int index = 0;
-            for( Integer s : receivedAcks ) {
-                receivedAcksArray[index++] = s;
-            }
+            receivedAcksArray = receivedAcks.toRangeArray();
         }         
+
+        // A new watchdog that is friendlier to the range set and takes into account
+        // that SentState will overflow for a range count higher than 255.
+        // Normally there will only be one range of IDs because of the way processing
+        // happens.  I think anything above 1 is a sign of a problem but I'm going
+        // to be more lenient than that.
+        if( receivedAcksArray.length == 1 ) {
+            // Cheap to calculate size so let's just see if things are getting crazy
+            int size = receivedAcks.size();
+            if( log.isTraceEnabled() ) {
+                log.trace("startMessage() -> receivedAcks.size():" + size 
+                        + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
+                        + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
+            }
+            
+            // It's possible that for large lag between ACK messages and sent messages
+            // that the received acks can be sizeable without indicating a problem.
+            // If we've only seen message ID #500 ack'ed but we just sent out message ID
+            // #700 then of course there are going to be a lot of missing double-acks.
+            // At LEAST 200.
+            if( size - maxMessageDelta >= 128 ) {
+                // Just log it... don't throw an exception.  The system may still yet recover.
+                log.error("Very bad things have happened in the receivedAcks set, size:" + size + "  maxMessageDelta:" + maxMessageDelta);
+            }
+        } else if( receivedAcksArray.length > 128 ) {
+            log.warn("Received acks set is getting very fragmented, number of ranges:" + receivedAcksArray.length); 
+            if( log.isTraceEnabled() ) {
+                int size = receivedAcks.size();
+                log.trace("startMessage() -> receivedAcks.size():" + size 
+                        + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
+                        + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
+            }
+        } else if( receivedAcksArray.length > 255 ) {
+            throw new RuntimeException("Highly fragmented received ACKs ranges:" + receivedAcksArray.length
+                                       + " Very bad things have happened in the receivedAcks set.");
+        }  
+ 
  
         this.outbound = new SentState(-1, receivedAcksArray, new ArrayList<FrameState>());
         this.headerBits = outbound.getEstimatedHeaderSize();
-        //log.info("Estimated header size:" + (headerBits/8.0) + " bytes including:" + receivedAcksArray.length + " recvd ACKS.");
+        //log.info("Estimated header size:" + (headerBits/8.0) + " bytes including:" + receivedAcksArray.length + " recvd ACK ranges.");
  
         int bytes = headerBits/8;        
         if( bytes > bufferSize ) {       
-            log.error("State header size exceeds max buffer size, including:" + receivedAcksArray.length + " recvd ACKS.");
+            log.error("State header size exceeds max buffer size, including:" + receivedAcksArray.length + " recvd ACK ranges.");
         } else if( bytes > (bufferSize/2) ) {
-            log.warn("State header size exceeds half max buffer size, including:" + receivedAcksArray.length + " recvd ACKS.");
+            log.warn("State header size exceeds half max buffer size, including:" + receivedAcksArray.length + " recvd ACK ranges.");
         } 
                 
         this.estimatedSize = headerBits;       

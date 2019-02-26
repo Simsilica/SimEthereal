@@ -36,7 +36,15 @@
 
 package com.simsilica.ethereal.net;
 
+import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jme3.network.Client;
+
+import com.simsilica.mathd.util.*;
+
 import com.simsilica.ethereal.LocalZoneIndex;
 import com.simsilica.ethereal.SharedObject;
 import com.simsilica.ethereal.SharedObjectSpace;
@@ -45,13 +53,7 @@ import com.simsilica.ethereal.Statistics.Sequence;
 import com.simsilica.ethereal.Statistics.Tracker;
 import com.simsilica.ethereal.zone.ZoneGrid;
 import com.simsilica.ethereal.zone.ZoneKey;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 
 /**
@@ -186,7 +188,10 @@ public class StateReceiver {
                         // I'm going to print an error to see if it shows up... could
                         // be an exception, too, but I want to see if it's relatively
                         // normal or not first.
-                        log.warn("********* Network ID lookup returned null." );
+                        log.warn("********* Network ID lookup returned null.  State:" + objectState
+                                 + "  messageId:" + state.messageId );
+                        // I'm seeing these in an application with lots of objects.  The objectState
+                        // seems to be empty, though.
                         continue;
                     }                
                 }
@@ -214,7 +219,7 @@ public class StateReceiver {
         
     }
 
-    protected void processAcks( int[] acked ) {    
+    protected void processAcks( IntRange[] acked ) {    
         // The server has acknowledged a certain number of our ACKs and
         // those represent the new baseline.  So we need to apply them to our
         // local state.  We are guaranteed to have _ALL_ of these because we
@@ -226,23 +231,31 @@ public class StateReceiver {
         // the server only stops sending a particular ID if we have
         // received that message, ACKed it, the server got the ACK, the server
         // included it in ANOTHER message and we ACKed that one too.
-        for( int ackedId : acked ) {
-            SentState sentState = ackReceivedState(ackedId);
+        for( IntRange range : acked ) {
+            int min = range.getMinValue();
+            int max = range.getMaxValue();
+            for( int ackedId = min; ackedId <= max; ackedId++ ) {        
+                SentState sentState = ackReceivedState(ackedId);
             
-            // It is normal that we might not have a sent state anymore
-            // because we might have previously ack'ed our ack.  The server
-            // keeps sending it until we claim we have it so we may get
-            // it multiple times while the server waits for our first
-            // ACK. 
-            if( sentState == null )
-                continue;
-                
-            List<FrameState> old = sentState.frames;  
-            if( old != null ) {
-                if( log.isDebugEnabled() ) {
-                    log.debug("Updating baseline for message:" + ackedId );
-                }                
-                space.updateBaseline(old);
+                // It is normal that we might not have a sent state anymore
+                // because we might have previously ack'ed our ack.  The server
+                // keeps sending it until we claim we have it so we may get
+                // it multiple times while the server waits for our first
+                // ACK. 
+                if( sentState == null ) {
+                    // Totally normal.  See above.  We may see the same acked
+                    // ID hundreds of times if there is a message lag for our
+                    // responses to the server.
+                    continue;
+                }
+                    
+                List<FrameState> old = sentState.frames;  
+                if( old != null ) {
+                    if( log.isDebugEnabled() ) {
+                        log.debug("Updating baseline for message:" + ackedId );
+                    }                
+                    space.updateBaseline(old);
+                }
             }
         }
     }        
@@ -270,6 +283,7 @@ public class StateReceiver {
             if( state.messageId < messageId ) { //state.isBefore(messageId) ) {
                 // Remove it and skip it... 
                 it.remove();
+log.warn("Skipping state:" + state + " for messageId:" + messageId);                
                 continue;
             }
             

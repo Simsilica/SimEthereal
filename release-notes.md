@@ -17,6 +17,14 @@ Version 1.5.0 (unreleased)
 * Modified the "received acks" watchdog in StateWriter to take message ID lag
     into account.  This should fix the cases where the exception would be
     thrown for cases where client ACKs are just lagging by a wide margin.    
+* Upgraded to SimMath 1.4.0 to get the new IntRangeSet for receved acks tracking.
+* Converted the tracked ACK message ID sets to IntRangeSets for efficient storage
+    and processing.  (During normal processing, ACK IDs will almost always be
+    a single contiguous range so a good candidate for IntRangeSet: one entry) 
+* Fixed a bug in SentState message writing/receiving where more than 255 ACK
+    IDs was causing overflow and randomly lost acks.  (Fixed by sending ranges
+    instead of every individual ACK set.)  This also fixed a message size
+    overflow issue. 
 
 
 Version 1.4.0 (latest)

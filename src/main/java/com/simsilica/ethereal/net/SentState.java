@@ -36,14 +36,17 @@
 
 package com.simsilica.ethereal.net;
 
-import com.simsilica.ethereal.io.BitInputStream;
-import com.simsilica.ethereal.io.BitOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import com.simsilica.mathd.util.*;
+
+import com.simsilica.ethereal.io.BitInputStream;
+import com.simsilica.ethereal.io.BitOutputStream;
 
 /**
  *
@@ -54,10 +57,10 @@ public class SentState {
 
     public long created = System.nanoTime();
     public int messageId;
-    public int[] acked;
+    public IntRange[] acked;
     public List<FrameState> frames;
 
-    public SentState( int messageId, int[] acked, List<FrameState> frames ) {
+    public SentState( int messageId, IntRange[] acked, List<FrameState> frames ) {
         this.messageId = messageId;
         this.acked = acked;
         this.frames = frames;               
@@ -87,7 +90,7 @@ public class SentState {
     public int getEstimatedHeaderSize() {
         int result = 0;
         result += 8; // array size
-        result += acked == null ? 0 : acked.length * 16; // array values
+        result += acked == null ? 0 : acked.length * 48; // array values
         return result;  
     }
 
@@ -100,9 +103,12 @@ public class SentState {
             
             // First read the acks array
             int size = in.readBits(8);        
-            int[] acks = new int[size];
-            for( int i = 0; i < size; i++ )
-                acks[i] = in.readBits(32);
+            IntRange[] acks = new IntRange[size];
+            for( int i = 0; i < size; i++ ) {
+                int min = in.readBits(32);
+                int length = in.readBits(16); 
+                acks[i] = new FixedIntRange(min, min + length - 1);                 
+            }
 
             // Then read each frame... this protocol presumes that a bit
             // per frame will ultimately be smaller than a fixed size count, on average.
@@ -124,8 +130,9 @@ public class SentState {
  
         // Write the acks array first
         out.writeBits(state.acked.length, 8);
-        for( int s : state.acked ) {
-            out.writeBits(s, 32);
+        for( IntRange range : state.acked ) {
+            out.writeBits(range.getMinValue(), 32);
+            out.writeBits(range.getLength(), 16);
         }
         
         // Now write the frames with their marker bit
@@ -145,12 +152,7 @@ public class SentState {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for( int i : acked ) {
-            if( sb.length() > 0 ) {
-                sb.append(", ");
-            }
-            sb.append("(" + i + ")");
-        }
+        sb.append(Arrays.asList(acked).toString());
         return "SentState[messageId=" + messageId + ", created=" + created + ", acked=[" + sb + "], frames=" + frames + "]";
     }        
 }
