@@ -203,6 +203,67 @@ public class SharedObject {
     
         if( baseline == null ) {
             baseline = state.clone();
+            
+            // I've seen a case where the initial baseLine had no realId.
+            // This showed up with a lot of objects in a zone when my view 
+            // crossed the zone boundary (but the zone was still visible).
+            // I suspect it has to do with state getting confused as objects
+            // move local zone IDs.
+            // Facts:
+            // -we at some point created the object with a valid realId because
+            //  it's part of our state.
+            // -before we ever received a baseline update, we somehow lost the
+            //  baseline update that had the realId in it.
+            // -I don't know where the other update gets lost, though... was
+            //  it in a zone that's now invisible and somehow got lost?
+            // -it is absoluately related to message splitting because if splitting
+            //  is eliminated then there is no issue.  
+            // -given that it's related to splitting and crossing zone boundaries,
+            //  I suspect it's related to how things like zones are interpretted
+            //  between split messages.  For example, the local zone ID can only
+            //  by properly interpretted relative to the view center that was in
+            //  effect when that message was sent.
+            // Note: further experimentation shows that it's hard to nail down
+            //  splitting as for sure an issue.  Even with normal message sizes
+            //  where splitting would be guaranteed, I cannot make the issue happen
+            //  without extreme message lag.  If there is no large message lag
+            //  (large enough to trigger warnings about header size) then there doesn't
+            //  seem to be an issue.  (Hmmm... I did see it as the warning but not
+            //  the later errors.  Interesting.)
+            // Also, while I can easily twist my brain into knots that convince
+            //  me that local zone index can be wrong maybe for some split messages
+            //  or something... I can't use any of that to justify why we never saw
+            //  a baseline with a realId.
+            //  First I thought maybe the zone IDs weren't being interpretted with
+            //  the proper local zone index.  But StateReceiver seems to do a pretty
+            //  good job of supplying the local index with the proper center from
+            //  the message being interpretted.  Updating the baseline doesn't but
+            //  I'm not sure it needs to.  zoneId is just a value and when the player
+            //  crosses a zone boundary we should see updates for all of the objects.
+            //  ...even if it's effectively the same zone.  (It's only like 9 bits
+            //  with most default configs so not as big a deal as it sounds.)
+            //  So when we see problems with the zones, I think it's the same problem
+            //  as the missing realId... not the cause.  We skipped a baseline somewhere.
+            //
+            // As a (hopefully temporary) work-around, I'm going to force
+            // update the baseline.realId in these cases because in our
+            // use-cases it never changes.
+            // Note: this just keeps the app from crashing later but doesn't actually
+            // solve the issue.  The app keeps running and objects keep updating but 
+            // the 'hung' shared objects don't seem to resolve.
+            //
+            // Leaving the above comments and this check in for now in case I see it
+            // again... but something that occurred to me is that the previous SentState
+            // was limited to only 255 ACK message IDs.  If we exceeded this then we'd
+            // end up randomly skipping various messages as we "caught up".  I can't
+            // guarantee that was happening but I will note that after fixing how ACKs
+            // are sent/received that I haven't seen this warning.  2019-02-25
+            if( baseline.realId == null ) {
+                log.warn("initial baseline contains no realId, networkId:" + state.networkId 
+                        + ", current realId:" + current.realId);
+                baseline.realId = current.realId;
+            }            
+            
             return true;
         }
         
@@ -246,11 +307,19 @@ public class SharedObject {
         // Now apply the delta
         current.applyDelta(state);          
  
-        if( current.zoneId == -1 ) {
-            throw new RuntimeException("No zoneId set for object with ID:" + current.realId);
+        //if( current.zoneId == -1 ) {
+        //    throw new RuntimeException("No zoneId set for object with ID:" + current.realId);
+        //}
+        if( current.zoneId == -1 || current.realId == null ) {
+            log.error("Error updating state, baseline=" + baseline + " current:" + current + " update:" + state);
         }
-        // Make sure our zone key is up to date
-        this.zone = zoneIndex.getZone(current.zoneId, this.zone);
+        
+        if( current.zoneId != -1 ) {
+            // Make sure our zone key is up to date
+            this.zone = zoneIndex.getZone(current.zoneId, this.zone);
+        } else {
+            log.warn("No zoneID set for object with ID:" + current.realId);
+        }
  
         if( !isMarkedRemoved() ) {
             // Things have changed and we might have told listeners it was
