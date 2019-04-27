@@ -1,4 +1,4 @@
-Version 1.5.0 (unreleased)
+Version 1.5.0 (latest)
 --------------
 * Internally moved ZoneManager creation to the EtherealHost constructor
     so that it could be accessed prior to EtherealHost service initialization.
@@ -27,7 +27,7 @@ Version 1.5.0 (unreleased)
     overflow issue. 
 
 
-Version 1.4.0 (latest)
+Version 1.4.0 
 --------------
 * Fixed zone ID calculation for non-uniform grids.  See PR #2.
 * Modified ZoneManager to automatically send "no-change" updates for
