@@ -92,7 +92,7 @@ public class StateCollector {
     }
  
     public void shutdown() {
-        log.info("Shuttong down state collector.");    
+        log.info("Shutting down state collector.");    
         runner.close();
     }
 
