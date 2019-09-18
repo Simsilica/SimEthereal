@@ -358,10 +358,10 @@ if( updateStartTime > nextFrameTime ) {
         log.trace("writing history");        
         historyLock.lock();
         try {
-            // If we're about to overlow history then be a little
+            // If we're about to overflow history then be a little
             // more graceful than throwing IndexOutOfBounds
             if( historySize + 1 >= historyIndex.length ) {
-                log.warn("Pausing history collect.  Overlow detected, current history size:" + historySize + " max:" + historyBacklog);
+                log.warn("Pausing history collect.  Overflow detected, current history size:" + historySize + " max:" + historyBacklog);
                 return;            
             }
         
