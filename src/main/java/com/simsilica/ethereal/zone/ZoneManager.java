@@ -115,6 +115,10 @@ public class ZoneManager {
     // one for a while.
     private boolean dynamicZoneRange = false;
 
+    // For frame rate limiting
+    private int frameUnderflowLimit = 60;
+    private int frameOverflowLimit = 70;
+
     /**
      *  Creates a new ZoneManager with a ZoneGrid sized using zoneSize and
      *  with a history backlog of 12 frames.
@@ -197,6 +201,67 @@ public class ZoneManager {
         return collectHistory;
     }
 
+    /**
+     *  Sets frame update limits which are used to print warnings when ZoneManager update rate
+     *  goes under or over the specified value.
+     *  By default underflow limit is 60 and overflow limit is 70.
+     *
+     *  @throws IllegalArgumentException if values are negative or underflow limit is larger than the overflow limit.
+     */
+    public void setFrameRateLimits( int frameUnderflowLimit, int frameOverflowLimit ) {
+        if( frameUnderflowLimit < 0 || frameOverflowLimit < 0 ) {
+            throw new IllegalArgumentException("Frame limits must be positive.");
+        }
+        if( frameUnderflowLimit > frameOverflowLimit ) {
+            throw new IllegalArgumentException("Frame underflow limit must be less than the overflow limit.");
+        }
+
+        this.frameUnderflowLimit = frameUnderflowLimit;
+        this.frameOverflowLimit = frameOverflowLimit;
+    }
+
+    /**
+     *  Sets frame underflow limit. ZoneManager will print warnings if frame update
+     *  rate goes below this limit. By default underflow limit is 60.
+     *
+     *  @throws IllegalArgumentException if value is negative or larger than the overflow limit.
+     */
+    public void setFrameUnderflowLimit( int frameUnderflowLimit ) {
+        if( frameUnderflowLimit < 0 ) {
+            throw new IllegalArgumentException("Frame underflow limit must be positive.");
+        }
+        if( frameUnderflowLimit > frameOverflowLimit ) {
+            throw new IllegalArgumentException("Frame underflow limit must be less than the overflow limit.");
+        }
+
+        this.frameUnderflowLimit = frameUnderflowLimit;
+    }
+
+    public int getFrameUnderflowLimit() {
+        return frameUnderflowLimit;
+    }
+
+    /**
+     *  Sets frame overflow limit. ZoneManager will print warnings if frame update
+     *  rate goes above this limit. By default overflow limit is 70.
+     *
+     *  @throws IllegalArgumentException if value is negative or less than the underflow limit.
+     */
+    public void setFrameOverflowLimit( int frameOverflowLimit ) {
+        if( frameOverflowLimit < 0 ) {
+            throw new IllegalArgumentException("Frame overflow limit must be positive.");
+        }
+        if( frameOverflowLimit < frameUnderflowLimit ) {
+            throw new IllegalArgumentException("Frame overflow limit must be larger than the underflow limit.");
+        }
+
+        this.frameOverflowLimit = frameOverflowLimit;
+    }
+
+    public int getFrameOverflowLimit() {
+        return frameOverflowLimit;
+    }
+
     protected ZoneRange getZoneRange( Long id, boolean create ) {
         ZoneRange result = index.get(id);
         if( result == null && create ) {
@@ -228,23 +293,23 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         updateStartTime = System.nanoTime();
         updateTime = time;
         
-/*if( lastTime > 0 ) {
-    long delta = time - lastTime;
-    System.out.println("zone time delta frame[" + timeCheckCounter + "]:" + ((delta)/1000000.0) + " ms");
-}
-lastTime = time;*/
-        
-frameCounter++;        
-if( updateStartTime > nextFrameTime ) {
-    if( frameCounter < 60 ) {
-        log.warn("zone update underflow FPS:" + frameCounter);
-    } else if( frameCounter > 70 ) {
-        log.warn("zone update overflow FPS:" + frameCounter);
-    }
-    //System.out.println("zone update FPS:" + frameCounter);
-    frameCounter = 0;
-    nextFrameTime = System.nanoTime() + 1000000000L;
-}
+        /*if( lastTime > 0 ) {
+            long delta = time - lastTime;
+            System.out.println("zone time delta frame[" + timeCheckCounter + "]:" + ((delta)/1000000.0) + " ms");
+        }
+        lastTime = time;*/
+
+        frameCounter++;
+        if( updateStartTime > nextFrameTime ) {
+            if( frameCounter < frameUnderflowLimit ) {
+                log.warn("zone update underflow FPS:" + frameCounter);
+            } else if( frameCounter > frameOverflowLimit ) {
+                log.warn("zone update overflow FPS:" + frameCounter);
+            }
+            //System.out.println("zone update FPS:" + frameCounter);
+            frameCounter = 0;
+            nextFrameTime = System.nanoTime() + 1000000000L;
+        }
         // Keep track of the IDs for objects that receive no updates.
         // (by subtraction)  Added for no-update support.        
         // Seed it with all known object IDs.
