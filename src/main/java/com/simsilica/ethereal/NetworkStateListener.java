@@ -302,7 +302,7 @@ public class NetworkStateListener implements StateListener {
             
             for( Iterator<SharedObject> it = space.objects().iterator(); it.hasNext(); ) {
                 SharedObject so = it.next();
-                
+ 
                 // If this object wasn't updated this frame then that
                 // means it probably fell out of any active zones.
                 // Meaning, we moved and that zone's objects are no longer
@@ -357,7 +357,7 @@ public class NetworkStateListener implements StateListener {
                     // moving in the space.  Fixing it is non-trivial and incurs
                     // a small overhead all the time just to support this unlikely
                     // use-case.  But hopefully this comment will save you a couple
-                    // hours of debug logging if you forget why it's like that.  
+                    // hours of debug logging if you forget why it's like that.
                     activeIds.remove(so.getEntityId());
                 } else {
                     activeIds.add(so.getEntityId());
@@ -415,10 +415,11 @@ public class NetworkStateListener implements StateListener {
  
                 int networkId = idIndex.getId(e.getEntity(), true);
                 Long entityId = e.getEntity(); 
+                Long parentId = e.getParent();
  
                 // Get or create the shared object for the IDs.
                 SharedObject so = space.getObject(networkId, entityId);
-                if( so.updateState(time, zone, zoneId, null, pos, rot) ) {
+                if( so.updateState(time, zone, zoneId, parentId, pos, rot) ) {
                     // If this was 'us' then keep the position for later
                     if( Objects.equals(self, entityId) ) {
                         this.selfPosition.set(pos);
@@ -432,8 +433,7 @@ public class NetworkStateListener implements StateListener {
         }
         
         if( b.getRemovals() != null ) {
-            for( Long e : b.getRemovals() )
-                {
+            for( Long e : b.getRemovals() ) {
                 int networkId = idIndex.getId(e, false);
                 if( networkId == -1 )
                     continue;

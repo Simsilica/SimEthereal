@@ -70,12 +70,16 @@ public class Zone {
         }    
         current = new StateBlock(time, key);
     }
-    
-    public void update( Long id, Vec3d pos, Quatd rotation ) {
+ 
+    /**
+     *  Adds the update information to the current StateBlock. If parent is null
+     *  then the object is a child of the world and has no parent.
+     */   
+    public void update( Long parent, Long id, Vec3d pos, Quatd rotation ) {
         if( log.isTraceEnabled() ) {
             log.trace(key + ":update(" + id + ", " + pos + ")");
         }
-        current.addUpdate(id, pos, rotation);            
+        current.addUpdate(parent, id, pos, rotation);            
     }
     
     public void addChild( Long id ) {

@@ -91,11 +91,17 @@ public class ObjectState implements Cloneable {
      *  state.
      */
     public boolean isMarkedRemoved() {
-        return parentId == null && zoneId == 0;
+        //return parentId == null && zoneId == 0;
+        // I think now that we are implementing parentId 'for real' that
+        // it's not right to clear it for removal.  -pspeed:2020-06-15
+        return zoneId == 0;
     }
  
     public void markRemoved() {
-        this.parentId = null;
+        // I think this clearing of the parent ID is wrong in today's light.
+        // But it is many years later and parentId was only used 'for real' 
+        // now.  -pspeed:2020-06-15
+        //this.parentId = null;
         this.zoneId = 0;
     }
  

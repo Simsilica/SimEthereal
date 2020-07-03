@@ -239,7 +239,7 @@ log.warn("Removing old unmatched message:" + s.messageId);
     }
 
     public void startFrame( long time, ZoneKey centerZone ) throws IOException {
-    
+
         // Watchdog to check for mismatched time sources.
         long delta = Math.abs(time - timeSource.getTime()); 
         if( delta > 1000000000 ) {

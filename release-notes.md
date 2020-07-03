@@ -1,5 +1,6 @@
-Version 1.5.1 (unreleased)
+Version 1.6.0 (unreleased)
 --------------
+* Added parent/child relationships between network shared objects.
 
 
 Version 1.5.0 (latest)

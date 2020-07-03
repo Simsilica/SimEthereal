@@ -67,11 +67,11 @@ public class StateBlock {
         return updates == null && removes == null;
     }
     
-    public void addUpdate( Long entity, Vec3d pos, Quatd rot ) {
+    public void addUpdate( Long parent, Long entity, Vec3d pos, Quatd rot ) {
         if( updates == null ) {
             updates = new ArrayList<>();
         }
-        updates.add( new StateEntry(entity, pos, rot) );
+        updates.add( new StateEntry(parent, entity, pos, rot) );
     }
     
     public void removeEntity( Long entity ) {
@@ -107,14 +107,20 @@ public class StateBlock {
     }
       
     public static class StateEntry {
+        private final Long parent;
         private final Long entity;
         private final Vec3d pos;
         private final Quatd rot;
         
-        public StateEntry( Long entity, Vec3d pos, Quatd rot ) {
+        public StateEntry( Long parent, Long entity, Vec3d pos, Quatd rot ) {
+            this.parent = parent;
             this.entity = entity;
             this.pos = pos;
             this.rot = rot;
+        }
+        
+        public Long getParent() {
+            return parent;
         }
         
         public Long getEntity() {
@@ -131,7 +137,7 @@ public class StateBlock {
  
         @Override       
         public String toString() {
-            return "StateEntry[" + entity + ", " + pos + ", " + rot + "]";
+            return "StateEntry[" + (parent != null ? (parent + ", ") : "") + entity + ", " + pos + ", " + rot + "]";
         }
     }
 }

@@ -385,6 +385,51 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         // Mark that we've received an update for this object.  Added for no-change support.
         noUpdates.remove(id);
     }    
+
+    public void updateEntity( Long parent, Long child, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
+        
+        ZoneRange range = getZoneRange(child, true);
+        range.setParent(parent);
+                
+        ZoneRange parentRange = parent == null ? null : getZoneRange(parent, false);
+        if( parent != null && parentRange == null ) {
+            log.warn("Child:" + child + " has no active parent:" + parent);
+        }
+        
+        Vec3i minZone; 
+        Vec3i maxZone; 
+        if( parentRange == null ) {
+            // Treat it like a world parent until we have a real
+            // parent.
+            
+            // Clear the parent since we aren't using it
+            range.setParent(null);
+
+            minZone = grid.worldToZone(bounds.getMin()); 
+            maxZone = grid.worldToZone(bounds.getMax()); 
+        } else {
+            // Children always adopt the parent's range.
+            minZone = parentRange.getMin();
+            maxZone = parentRange.getMax();
+        } 
+
+        if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
+          
+            if( !range.setRange(minZone, maxZone) ) {
+                log.error("Error setting range for object:" + child 
+                        + " from bounds:" + bounds
+                        + " grid size:" + grid.getZoneSize() 
+                        + " likely too small for object with extents:" + bounds.getExtents());
+            }
+        }            
+
+        // Now we blast an update to the zones for any listeners to handle.
+        range.sendUpdate(p.clone(), orientation.clone());
+        
+        // Mark that we've received an update for this object.  Added for no-change support.
+        noUpdates.remove(child);
+
+    }
  
     /**
      *  Called to end update collection for the current 'frame'.  See: beginUpdate()
@@ -578,14 +623,18 @@ if( historySize > high ) {
         return result;        
     }
 
-    protected void updateZoneObject( Long id, Vec3d p, Quatd orientation, ZoneKey key ) {
+    /**
+     *  Sends the object update to the specified zone.  If parent is null then
+     *  'child' is a child of the world.
+     */
+    protected void updateZoneObject( Long parent, Long id, Vec3d p, Quatd orientation, ZoneKey key ) {
         Zone zone = getZone(key, false);
         if( zone == null ) {
             log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
             return;
         }
  
-        zone.update(id, p, orientation);  
+        zone.update(parent, id, p, orientation);  
     }
 
     protected void enterZone( Long id, ZoneKey key ) {
@@ -603,7 +652,7 @@ if( historySize > high ) {
         if( log.isDebugEnabled() ) {
             log.debug("ZONE: leave zone:" + id + "  " + key);
         }
-        
+
         // Remove this body from the zone's children...
         // If the zone has no more children then remove it
         Zone zone = getZone(key, false);
@@ -647,6 +696,9 @@ if( historySize > high ) {
         public void sendUpdate( Vec3d p, Quatd orientation );
         public void sendNoChange();
         public void leave( Long id );
+        
+        public void setParent( Long parent );
+        public Long getParent();
     }
 
     /**
@@ -660,6 +712,7 @@ if( historySize > high ) {
      */
     protected final class OctZoneRange implements ZoneRange {
         Long id;
+        Long parent;
     
         Vec3i min;
         Vec3i max;
@@ -713,16 +766,16 @@ if( historySize > high ) {
             lastOrientation = orientation;
             
             if( keys[0] != null ) {
-                updateZoneObject(id, p, orientation, keys[0]);
+                updateZoneObject(parent, id, p, orientation, keys[0]);
             }
             if( keys[1] != null ) {
-                updateZoneObject(id, p, orientation, keys[1]);
+                updateZoneObject(parent, id, p, orientation, keys[1]);
             }
             if( keys[2] != null ) {
-                updateZoneObject(id, p, orientation, keys[2]);
+                updateZoneObject(parent, id, p, orientation, keys[2]);
             }
             if( keys[3] != null ) {
-                updateZoneObject(id, p, orientation, keys[3]);
+                updateZoneObject(parent, id, p, orientation, keys[3]);
             }
         }
         
@@ -846,10 +899,18 @@ if( historySize > high ) {
             }
         }
         
+        public void setParent( Long parent ) {
+            this.parent = parent;
+        }
+        
+        public Long getParent() {
+            return parent;
+        }
     }
     
     protected final class DynamicZoneRange implements ZoneRange {
         Long id;
+        Long parent;
     
         Vec3i min;
         Vec3i max;
@@ -892,7 +953,7 @@ if( historySize > high ) {
             lastOrientation = orientation;
  
             for( int i = 0; i < keyCount; i++ ) {
-                updateZoneObject(id, p, orientation, keys[i]);
+                updateZoneObject(parent, id, p, orientation, keys[i]);
             }
         }
         
@@ -966,6 +1027,9 @@ if( historySize > high ) {
             if( log.isDebugEnabled() ) {
                 log.debug("DynamicZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
             }        
+if( id != this.id ) {
+    log.warn("How would this ever happen: id:" + id + "  this.id:" + this.id);
+}            
             for( int i = 0; i < keyCount; i++ ) {
                 leaveZone(id, keys[i]);
             }
@@ -992,8 +1056,20 @@ if( historySize > high ) {
             }
         }
         
+        public void setParent( Long parent ) {
+            this.parent = parent;
+        }
+        
+        public Long getParent() {
+            return parent;
+        }
+        
+        @Override
+        public String toString() {
+            return "DynamicZoneRange[" + id + ", " + min + ", " + max + "]"; 
+        }
     }    
-
+    
 }
 
  

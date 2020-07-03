@@ -91,6 +91,10 @@ public class SharedObject {
         return current.realId;
     }
  
+    public Long getParentId() {
+        return current.parentId;
+    }
+ 
     public long getVersion() {
         return version;
     }
@@ -101,7 +105,11 @@ public class SharedObject {
     
     public Vec3d getWorldPosition() {
         Vec3d result = space.getObjectProtocol().getPosition(current); 
-        return zone.toWorld(result, result);
+        if( current.parentId == null ) { 
+            return zone.toWorld(result, result);
+        } else {
+            return result;
+        }
     }
     
     public Quatd getWorldRotation() {
@@ -185,14 +193,21 @@ public class SharedObject {
                 log.debug("Unremoving:" + current.realId);
             }
         }
-        
+ 
         this.version = time;
  
         this.zone = zone;
         current.zoneId = zoneId;
         current.parentId = parentId;
         
-        Vec3d localPos = zone.toLocal(pos);
+        Vec3d localPos;
+        if( parentId == null ) {
+            // Zone is our parent
+            localPos = zone.toLocal(pos);
+        } else {
+            // Else we are already parent-relative
+            localPos = pos;
+        }
         space.getObjectProtocol().setPosition(current, localPos);
         space.getObjectProtocol().setRotation(current, rot);
         
