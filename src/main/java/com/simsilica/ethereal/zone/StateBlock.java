@@ -71,7 +71,7 @@ public class StateBlock {
         if( updates == null ) {
             updates = new ArrayList<>();
         }
-        updates.add( new StateEntry(parent, entity, pos, rot) );
+        updates.add(new StateEntry(parent, entity, pos, rot));
     }
     
     public void removeEntity( Long entity ) {

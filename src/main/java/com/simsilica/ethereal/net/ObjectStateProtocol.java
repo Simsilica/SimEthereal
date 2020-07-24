@@ -52,6 +52,7 @@ import java.io.IOException;
  *  @author    Paul Speed
  */
 public class ObjectStateProtocol {
+
     public int zoneIdBitSize;
     public int idBitSize;
     public Vec3Bits positionBits;

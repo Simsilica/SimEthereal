@@ -272,8 +272,7 @@ log.warn("Removing old unmatched message:" + s.messageId);
             }
             // Then create the frame
             currentFrame = new FrameState(frameTime, legacySequence++, centerZoneId);
-        }        
-            
+        }                    
         currentFrame.addState(state, objectProtocol);
     }
 

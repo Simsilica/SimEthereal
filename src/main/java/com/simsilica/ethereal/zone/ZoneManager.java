@@ -364,30 +364,38 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         // that would occure if we did it internally.  By projecting outward, we can even
         // encourage the caller to also keep Long IDs and then the autoboxing never happens
         // but at the very least, we only do it once in here.
-    
-        Vec3i minZone = grid.worldToZone(bounds.getMin()); 
-        Vec3i maxZone = grid.worldToZone(bounds.getMax()); 
  
-        ZoneRange range = getZoneRange(id, true);
-        if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
+        // Updating a regular entity is an implied removal of the parent ID
+        // if it previously had a parent ID.  Otherwise, the parent version of
+        // updateEntity() is the same... so we'll just delegate to it. -pspeed:2020-07-04
+        updateEntity(null, id, active, p, orientation, bounds);   
         
-            if( !range.setRange(minZone, maxZone) ) {
-                log.error("Error setting range for object:" + id 
-                          + " from bounds:" + bounds
-                          + " grid size:" + grid.getZoneSize() 
-                          + " likely too small for object with extents:" + bounds.getExtents());
-            }
-        }
-        
-        // Now we blast an update to the zones for any listeners to handle.
-        range.sendUpdate(p.clone(), orientation.clone());
-        
-        // Mark that we've received an update for this object.  Added for no-change support.
-        noUpdates.remove(id);
+        // Temporarily leaving the original code here just for easy reference.  It 
+        // should be removed once we feel really solid about the other updateEntity() 
+        // method.  -pspeed:2020-07-24
+        //
+        //Vec3i minZone = grid.worldToZone(bounds.getMin()); 
+        //Vec3i maxZone = grid.worldToZone(bounds.getMax()); 
+        //
+        //ZoneRange range = getZoneRange(id, true);
+        //if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
+        //    if( !range.setRange(minZone, maxZone) ) {
+        //        log.error("Error setting range for object:" + id 
+        //                  + " from bounds:" + bounds
+        //                  + " grid size:" + grid.getZoneSize() 
+        //                  + " likely too small for object with extents:" + bounds.getExtents());
+        //    }
+        //}
+        //
+        //// Now we blast an update to the zones for any listeners to handle.
+        //range.sendUpdate(p.clone(), orientation.clone());
+        //
+        //// Mark that we've received an update for this object.  Added for no-change support.
+        //noUpdates.remove(id);
     }    
 
     public void updateEntity( Long parent, Long child, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
-        
+ 
         ZoneRange range = getZoneRange(child, true);
         range.setParent(parent);
                 
@@ -428,7 +436,6 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         
         // Mark that we've received an update for this object.  Added for no-change support.
         noUpdates.remove(child);
-
     }
  
     /**
@@ -632,8 +639,7 @@ if( historySize > high ) {
         if( zone == null ) {
             log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
             return;
-        }
- 
+        } 
         zone.update(parent, id, p, orientation);  
     }
 

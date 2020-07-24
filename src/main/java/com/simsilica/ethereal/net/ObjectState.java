@@ -44,7 +44,18 @@ import java.util.Objects;
  *
  *  @author    Paul Speed
  */
-public class ObjectState implements Cloneable { 
+public class ObjectState implements Cloneable {
+
+    /**
+     *  For a field like 'parent', null indicates that there is no change in state.
+     *  So we'll use a special constant to denote the lack of a parent.  This
+     *  makes it easier to deal with the value reading/writing since there is no
+     *  real way to write a "null" because 0 is a valid ID.  We could keep a separate
+     *  flag for whether a parent has been set or not but I think burning the ID of -1
+     *  for regular use is a small price to pay to avoid an extra field.  -pspeed:2020-07-04
+     */
+    public static long NO_PARENT = -1L;
+ 
     public int networkId;
     public int zoneId;
     public Long realId;

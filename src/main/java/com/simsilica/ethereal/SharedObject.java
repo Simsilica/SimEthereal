@@ -92,7 +92,10 @@ public class SharedObject {
     }
  
     public Long getParentId() {
-        return current.parentId;
+        // In an ObjectState, there is a difference between a null parent (no change)
+        // and not having a parent.  Lack of a parent is now marked with a special
+        // ID (-1).
+        return current.parentId == ObjectState.NO_PARENT ? null : current.parentId;
     }
  
     public long getVersion() {
@@ -105,7 +108,7 @@ public class SharedObject {
     
     public Vec3d getWorldPosition() {
         Vec3d result = space.getObjectProtocol().getPosition(current); 
-        if( current.parentId == null ) { 
+        if( getParentId() == null ) { 
             return zone.toWorld(result, result);
         } else {
             return result;
@@ -198,7 +201,10 @@ public class SharedObject {
  
         this.zone = zone;
         current.zoneId = zoneId;
-        current.parentId = parentId;
+        
+        // Translate a null parent into the 'no parent' special ID.  For an ObjectState
+        // there is a difference between null (no change) and not having a parent.
+        current.parentId = parentId == null ? ObjectState.NO_PARENT : parentId;
         
         Vec3d localPos;
         if( parentId == null ) {
