@@ -1,6 +1,7 @@
 Version 1.6.0 (unreleased)
 --------------
 * Added parent/child relationships between network shared objects.
+* Fixed a bug in the assertion logic in BufferedHashSet's thread check.
 
 
 Version 1.5.0 (latest)

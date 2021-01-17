@@ -75,7 +75,7 @@ public class BufferedHashSet<E> implements Set<E> {
             writer = Thread.currentThread();
             return true;
         }
-        return false;
+        return writer == Thread.currentThread();
     }
 
     private String badThreadMessage() {
