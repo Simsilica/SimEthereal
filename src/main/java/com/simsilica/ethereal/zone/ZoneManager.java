@@ -1033,7 +1033,7 @@ if( historySize > high ) {
             if( log.isDebugEnabled() ) {
                 log.debug("DynamicZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
             }        
-if( id != this.id ) {
+if( (long)id != (long)this.id ) {
     log.warn("How would this ever happen: id:" + id + "  this.id:" + this.id);
 }            
             for( int i = 0; i < keyCount; i++ ) {
