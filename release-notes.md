@@ -1,11 +1,11 @@
-Version 1.7.0 (unreleased)
+Version 1.7.0 (latest)
 --------------
 * fixed an ID comparison bug in some watchdog code
 * Upgraded the build to use gradle 7.4.2
 * Migrated publishing to maven central instead of jcenter
 
 
-Version 1.6.0 (latest)
+Version 1.6.0
 --------------
 * Added parent/child relationships between network shared objects.
 * Fixed a bug in the assertion logic in BufferedHashSet's thread check.
