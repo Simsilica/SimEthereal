@@ -1,5 +1,6 @@
 Version 1.6.1 (unreleased)
 --------------
+* fixed an ID comparison bug in some watchdog code
 
 
 Version 1.6.0 (latest)
