@@ -18,6 +18,7 @@ version='1.6.1-SNAPSHOT'
 group='com.simsilica'
 
 ext.jmeVersion = "3.1.0-stable"
+ext.slf4jVersion = '1.7.32'
 
 // Version meta-data
 ext {
@@ -64,7 +65,7 @@ dependencies {
     compile "com.simsilica:sim-math:1.4.0"
 
     // Base logging
-    compile 'org.slf4j:slf4j-api:1.7.15'
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
 }
 
 
