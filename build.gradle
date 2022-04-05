@@ -1,96 +1,37 @@
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        // This sucks down a lot of stuff that 'normal' users wouldn't
-        // have and won't need anyway.
-        if( project.hasProperty('releaseUser') ) {
-            classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.+'
-        }
-    }
+/**
+ *  Root-level SimEthereal build script.
+ */
+
+plugins {
+    id 'sim-ethereal.published-library'
 }
 
-apply plugin: 'java'
-apply plugin: 'maven'
-
-version='1.6.1-SNAPSHOT'
+version='1.7.0-SNAPSHOT'
 group='com.simsilica'
 
 ext.jmeVersion = "3.1.0-stable"
 ext.slf4jVersion = '1.7.32'
+ext.simMathVersion = '1.4.0'
 
-// Version meta-data
-ext {
-    releaseDescription = "Sim-Ethereal ${project.version}"
-    releaseVcsTag = "${project.name}-v${project.version}"
-}
-
-// Project-wide meta-data
-ext {
-    bintrayLabels = ['jMonkeyEngine', 'gamedev', 'networking']
-    websiteUrl = 'https://github.com/Simsilica/SimEthereal'
-    vcsUrl = 'https://github.com/Simsilica/SimEthereal.git'
-    githubRepo = 'Simsilica/SimEthereal'
-    issueTrackerUrl = 'https://github.com/Simsilica/SimEthereal/issues'
-}
-
-sourceCompatibility = 1.7
-compileJava {
-    options.encoding = 'UTF-8'
-    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
-}
-
-repositories {
-    mavenLocal()
-
-    if( JavaVersion.current() == JavaVersion.VERSION_1_7 ) {
-        // Fallback for JDK 7 that can no longer connect to jcenter with https
-        maven { url "http://jcenter.bintray.com" }
-    } else {
-        jcenter()
-    }
-}
-
-// Make sure the build file declares what it actually imports
-configurations.compile {
-    transitive = false
+// Set this module's maven pom description
+publishing.publications.library(MavenPublication).pom {
+    description = 'A real-time network sync library in Java.'
 }
 
 dependencies {
     // Based on JME networking
-    compile "org.jmonkeyengine:jme3-networking:$jmeVersion"
+    api "org.jmonkeyengine:jme3-networking:$jmeVersion"
 
     // Uses SimMath for bit streaming utilities and transition buffers
-    compile "com.simsilica:sim-math:1.4.0"
+    api "com.simsilica:sim-math:$simMathVersion"
 
     // Base logging
-    compile "org.slf4j:slf4j-api:$slf4jVersion"
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
 }
 
-
-// Configuration to produce maven-repo style -sources and -javadoc jars
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-    exclude '**/.backups'
+compileJava.doLast {
+    def buildDate = new Date().format('yyyyMMdd')
+    println "Writing sim-ethereal.build.date:" + buildDate
+    new File(destinationDir, 'sim-ethereal.build.date').text = buildDate
 }
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-artifacts {
-    archives sourcesJar
-    archives javadocJar
-}
-
-
-// Put this at the end or it won't pick up the project.version and stuff
-if( project.hasProperty('releaseUser') ) {
-    apply plugin: 'com.jfrog.bintray'
-    apply from: 'https://raw.githubusercontent.com/Simsilica/gradle-plugins/master/simtools-release.gradle'
-}
-
 

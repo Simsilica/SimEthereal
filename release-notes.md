@@ -1,6 +1,8 @@
-Version 1.6.1 (unreleased)
+Version 1.7.0 (unreleased)
 --------------
 * fixed an ID comparison bug in some watchdog code
+* Upgraded the build to use gradle 7.4.2
+* Migrated publishing to maven central instead of jcenter
 
 
 Version 1.6.0 (latest)
