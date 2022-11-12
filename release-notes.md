@@ -1,3 +1,8 @@
+Version 1.7.1 (unreleased)
+--------------
+* fixed ObjectStateMessages to actually be UDP.
+
+
 Version 1.7.0 (latest)
 --------------
 * fixed an ID comparison bug in some watchdog code

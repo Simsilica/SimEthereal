@@ -543,7 +543,8 @@ log.warn("Removing old unmatched message:" + s.messageId);
         long timestamp = timeSource.getTime();
         int id = nextMessageId++;    
 
-        ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);        
+        ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);
+        msg.setReliable(false);
         msg.setState(outbound, objectProtocol);
         sentStates.add(outbound);
         

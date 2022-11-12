@@ -111,6 +111,10 @@ public class StateReceiver {
         }        
 
         // Very first thing we do is acknowledge the message
+        // 2022-11-05 - I believe that sending these reliably is why we can
+        // just ack this single message and not keep a running set of all
+        // acknowledged messages to send back.  We know the server will eventually
+        // see this and we don't particularly care how long it takes.
         client.send(new ClientStateMessage(msg, 0));
  
         // Collect the statistics
