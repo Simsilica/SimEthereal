@@ -197,10 +197,16 @@ public class NetworkStateListener implements StateListener {
     }
  
     /**
-     *  Called when client state is received.
+     *  Called when client state is received.  Autowired through the 
+     *  SessionDataDelegator setup in EtherealHost.
      */   
     protected void postResponse( ClientStateMessage m ) {
-        m.resetReceivedTime();
+ 
+        // ClientStateMessage's getTime() will be returning the ObjectStateMessage's
+        // timestamp which is in 'time source' time.  So we need to know received time
+        // in 'time source' time also.
+        long timestamp = host.getTimeSource().getTime();   
+        m.resetReceivedTime(timestamp);
         
         long ping = m.getReceivedTime() - m.getTime();
         stats.addPingTime(ping);

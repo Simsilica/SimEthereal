@@ -1,6 +1,9 @@
 Version 1.7.1 (unreleased)
 --------------
 * fixed ObjectStateMessages to actually be UDP.
+* fixed a bug in how the ping time was calculated by modifying 
+    ClientStateMessage.resetReceivedTime() to take a timestamp instead of 
+    getting it directly from System.nanoTime().
 
 
 Version 1.7.0 (latest)

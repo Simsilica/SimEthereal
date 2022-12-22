@@ -62,9 +62,9 @@ public class ClientStateMessage extends AbstractMessage {
         this.time = ack.getTime();
         this.controlBits = controlBits;
     }
-    
-    public void resetReceivedTime() {
-        receivedTime = System.nanoTime();    
+ 
+    public void resetReceivedTime( long timestamp ) {       
+        receivedTime = timestamp;    
     }
     
     public long getReceivedTime() {
