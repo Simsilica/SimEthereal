@@ -48,6 +48,15 @@ public interface StateListener {
 
     public void beginFrameBlock();
     public void endFrameBlock();
+    
+    /**
+     *  Called after beginFrameBlock() but before beginFrame(), this lets
+     *  the listener know that an object had warped beyond any previous
+     *  zone ranges.  The listener can then determine if this would update
+     *  its own active zones and adjust accordingly. 
+     */
+    public void objectWarped( StateBlock.StateEntry entry );
+     
     public void beginFrame(long time);
     public void endFrame(long time);
     public boolean hasChangedZones();

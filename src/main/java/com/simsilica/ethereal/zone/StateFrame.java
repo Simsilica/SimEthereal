@@ -36,7 +36,7 @@
 
 package com.simsilica.ethereal.zone;
 
-import java.util.ArrayList;
+import java.util.*;
 
 
 /**
@@ -46,6 +46,8 @@ import java.util.ArrayList;
  */
 public class StateFrame extends ArrayList<StateBlock> {
     private final long time;
+ 
+    private Set<Long> warps;
     
     public StateFrame( long time, int maxZones ) {
         super(maxZones);
@@ -54,5 +56,19 @@ public class StateFrame extends ArrayList<StateBlock> {
     
     public long getTime() {
         return time;
+    }
+    
+    public void addWarps( Collection<Long> warps ) {
+        if( warps == null ) {
+            return;
+        }
+        if( this.warps == null ) {
+            this.warps = new HashSet<>();
+        }
+        this.warps.addAll(warps);
+    }
+    
+    public Set<Long> getWarps() {
+        return warps;
     } 
 }

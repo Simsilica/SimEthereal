@@ -245,6 +245,27 @@ public class NetworkStateListener implements StateListener {
     }
 
     @Override
+    public void objectWarped( StateBlock.StateEntry entry ) {
+        if( log.isDebugEnabled() ) {
+            log.debug("objectWarped(" + entry + ") self:" + self);
+        }
+        // cast self to long so that we can compare long to long.
+        // Java will unbox one side if we cast the other but won't
+        // unbox both just for a comparison.
+        if( self == null || (long)self != entry.getEntity() ) {
+            return;
+        }
+        
+        selfPosition.set(entry.getPosition());
+        
+        // This should be safe to do here because we are outside of normal
+        // frame processing... so it's safe to move the local zone IDs around.
+        if( zoneIndex.setCenter(selfPosition, entered, exited) ) {
+            zonesChanged = true;
+        }
+    }
+    
+    @Override
     public void beginFrame( long time ) {
     
         if( log.isTraceEnabled() ) {
@@ -357,7 +378,7 @@ public class NetworkStateListener implements StateListener {
                     // note that if there are no other moving objects in the space
                     // the frame updates stop happening.  There are no frame times
                     // and so StateCollector stops calling us at all.
-                    // I've left it this way because it is extremely unreastic
+                    // I've left it this way because it is extremely unrealistic
                     // that NO objects would be moving anywhere in the space...
                     // especially since typically the player itself is an object
                     // moving in the space.  Fixing it is non-trivial and incurs
@@ -412,6 +433,14 @@ public class NetworkStateListener implements StateListener {
                         + " updates:" + b.getUpdates() 
                         + " removals:" + b.getRemovals());
         }        
+        
+        if( b.getWarps() != null ) {
+            if( b.getWarps().indexOf(self) >= 0 ) {
+                // We should never see this because self's zones would
+                // have been adjusted to something that didn't have the
+                // warp.  Only the exited zones get the warps.
+            }
+        }
         
         if( b.getUpdates() != null )  {        
             for( StateEntry e : b.getUpdates() ) {

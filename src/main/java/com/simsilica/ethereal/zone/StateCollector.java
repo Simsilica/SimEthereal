@@ -194,6 +194,36 @@ public class StateCollector {
     protected void publishFrame( StateFrame frame ) {
         log.trace("publishFrame()");
 
+        // Somehow handle warped objects in case it would move
+        // the state listener
+        if( frame.getWarps() != null ) {
+            log.info("Need to handle warps this frame:" + frame.getWarps());
+            // Any objects warped this frame will have no pending state
+            // in any of their previous zones but will have no state in any
+            // new intersecting zones.  However, it's a bit tricky because
+            // we don't know the position of the objects nor which state listeners
+            // actually care.  The state listener would need to know the position
+            // in order to adjust its 'center'.
+            // A hacky approach is to go through all of the state blocks and
+            // check for a state entry.  This is an nxnxn loop which is unfortunate.
+            // Without having StateListener expose its 'self', we can't really make
+            // it any more efficient.  We can avoid some extra loops by at least
+            // using the hash sets O(1) in our favor.
+            Set<Long> warps = frame.getWarps();
+            for( StateBlock b : frame ) {                
+                if( b.getUpdates() != null ) {
+                    for( StateBlock.StateEntry e : b.getUpdates() ) {
+                        log.info("Checking frame:" + e);
+                        if( warps.contains(e.getEntity()) ) {
+                            for( StateListener l : listeners ) {
+                                l.objectWarped(e);
+                            }
+                        } 
+                    }
+                }
+            }
+        }
+
         for( StateListener l : listeners ) {
             if( l.hasChangedZones() ) {
                 List<ZoneKey> exited = l.getExitedZones();

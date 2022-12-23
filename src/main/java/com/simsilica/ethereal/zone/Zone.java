@@ -81,6 +81,16 @@ public class Zone {
         }
         current.addUpdate(parent, id, pos, rotation);            
     }
+
+    /**
+     *  Adds the warp information to the current StateBlock.
+     */
+    public void warp( Long parent, Long id ) {
+        if( log.isTraceEnabled() ) {
+            log.trace(key + ":warp(" + parent + ", " + id + ")");
+        }
+        current.addWarp(parent, id);
+    }
     
     public void addChild( Long id ) {
         if( log.isTraceEnabled() ) {

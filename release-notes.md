@@ -1,9 +1,17 @@
-Version 1.7.1 (unreleased)
+Version 1.8.0 (unreleased)
 --------------
 * fixed ObjectStateMessages to actually be UDP.
 * fixed a bug in how the ping time was calculated by modifying 
     ClientStateMessage.resetReceivedTime() to take a timestamp instead of 
     getting it directly from System.nanoTime().
+* Converted a println() in ZoneManager to a log.warn() related to exceeding
+    history size watchdog threshold.
+* Fixed a long-standing bug related to objects moving so far that none of
+    their old zones are valid anymore.  This left the old StateListener
+    stranded if the object was what gave the state listener its 'center'.
+* Added StateListener.objectWarped() and the NetworkStateListener.objectWarped()
+    implementation to fix the bug mentioned above.  This is a breaking change
+    for any apps implementing their own StateListener. 
 
 
 Version 1.7.0 (latest)

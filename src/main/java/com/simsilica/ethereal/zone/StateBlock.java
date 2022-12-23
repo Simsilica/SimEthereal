@@ -53,6 +53,7 @@ public class StateBlock {
     private final ZoneKey zone;
     private List<StateEntry> updates;
     private List<Long> removes;
+    private List<Long> warps;
  
     public StateBlock( long time, ZoneKey zone ) {
         this.time = time;
@@ -64,7 +65,7 @@ public class StateBlock {
     }
 
     public boolean isEmpty() {
-        return updates == null && removes == null;
+        return updates == null && removes == null && warps == null;
     }
     
     public void addUpdate( Long parent, Long entity, Vec3d pos, Quatd rot ) {
@@ -81,6 +82,16 @@ public class StateBlock {
         removes.add(entity);
     }
     
+    public void addWarp( Long parent, Long entity ) {
+        if( warps == null ) {
+            warps = new ArrayList<>();
+        }
+        // Technically we probably only care about entities with
+        // no parent... but what if a 'self' was attached as a child to
+        // some ridable object?  So we'll track them all.
+        warps.add(entity);
+    } 
+   
     public long getTime() {
         return time;        
     }
@@ -91,6 +102,10 @@ public class StateBlock {
  
     public List<Long> getRemovals() {
         return removes;
+    }
+
+    public List<Long> getWarps() {
+        return warps;
     }
 
     @Override   

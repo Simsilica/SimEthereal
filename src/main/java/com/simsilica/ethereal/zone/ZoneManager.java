@@ -524,10 +524,11 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         // we will be purging it        
         historyLock.lock();
         try {
-int high = 5;        
-if( historySize > high ) {            
-    System.out.println( "Purging >" + high + " history frames:" + historySize );
-}
+            int high = 5;
+            if( historySize > high ) {            
+                //System.out.println( "Purging >" + high + " history frames:" + historySize );
+                log.warn("Purging >" + high + " history frames:" + historySize );
+            }
             StateFrame[] state = new StateFrame[historySize];
  
             // Go through each zone and merge its history into an array
@@ -555,7 +556,10 @@ if( historySize > high ) {
                     if( state[h] == null ) {
                         state[h] = new StateFrame(historyIndex[h], zones.size());
                     }
-                    state[h].add(b);    
+                    state[h].add(b);
+                    
+                    // Keep track of the global warps for this history frame
+                    state[h].addWarps(b.getWarps());    
                 }               
             }
  
@@ -641,6 +645,18 @@ if( historySize > high ) {
             return;
         } 
         zone.update(parent, id, p, orientation);  
+    }
+
+    protected void objectWarped( Long parent, Long id, ZoneKey key ) {
+        if( log.isDebugEnabled() ) {
+            log.debug("objectWarped(" + parent + ", " + id + ", " + key + ")");
+        }    
+        Zone zone = getZone(key, false);
+        if( zone == null ) {
+            log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
+            return;
+        } 
+        zone.warp(parent, id);
     }
 
     protected void enterZone( Long id, ZoneKey key ) {
@@ -922,8 +938,8 @@ if( historySize > high ) {
         Vec3i max;
         
         ZoneKey[] keys = new ZoneKey[0];
-        int keyCount; 
-
+        int keyCount;
+        
         // For purposes of handling 'no-change' updates, we will keep
         // the last state we received.  Added for no-updated support.
         Vec3d lastPosition;
@@ -1042,22 +1058,55 @@ if( (long)id != (long)this.id ) {
         }                
  
         private void enterMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
+            
+            int entered = 0;
  
             // See which new zone keys are not in the current range
             for( int i = 0; i < count; i++ ) {
                 ZoneKey key = zoneKeys[i];
                 if( !contains(key.x, key.y, key.z) ) {
-                    enterZone(id, key);   
+                    enterZone(id, key);
+                    entered++;   
+                }
+            }
+            
+            if( entered == count ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("Probable warp has occurred, all zones are new.");
                 }
             }       
         }
 
         private void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
+            
+            int left = 0;
+            
             // See which old zone keys are not in the current range
             for( int i = 0; i < count; i++ ) {
                 ZoneKey key = zoneKeys[i];
                 if( !contains(key.x, key.y, key.z) ) {
-                    leaveZone(id, key);   
+                    leaveZone(id, key);
+                    left++;   
+                }
+            }
+
+            if( left == count ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("Probable warp has occurred, exited all old zones.");
+                }
+                // Keeps track of whether the object moved so far that the 
+                // old zone keys and new zone keys no longer overlap.  A lot of the
+                // state propagation relies on the fact that the state listener
+                // will still get notified because some of the zones overlap.  In
+                // the case where an object moves so far that none of its old zones
+                // are current then that listener will never get notified... this is
+                // especially important if the object was a 'self' and controls the
+                // active zones that are being sent over the wire.  By encoding the
+                // warp state we should be able to let the listener know to completely
+                // reset its active zones.
+                for( int i = 0; i < count; i++ ) {
+                    ZoneKey key = zoneKeys[i];
+                    objectWarped(parent, id, key);
                 }
             }
         }
