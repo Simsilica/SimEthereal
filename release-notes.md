@@ -1,4 +1,4 @@
-Version 1.8.0 (unreleased)
+Version 1.8.0 (latest)
 --------------
 * fixed ObjectStateMessages to actually be UDP.
 * fixed a bug in how the ping time was calculated by modifying 
@@ -14,7 +14,7 @@ Version 1.8.0 (unreleased)
     for any apps implementing their own StateListener. 
 
 
-Version 1.7.0 (latest)
+Version 1.7.0 
 --------------
 * fixed an ID comparison bug in some watchdog code
 * Upgraded the build to use gradle 7.4.2
