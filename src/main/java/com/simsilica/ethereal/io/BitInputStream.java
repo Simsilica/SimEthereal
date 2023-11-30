@@ -45,7 +45,7 @@ import java.io.*;
  *  @version   $Revision: 4022 $
  *  @author    Paul Speed
  */
-public class BitInputStream {
+public class BitInputStream implements AutoCloseable {
     private final InputStream in;
     private int lastByte;
     private int bits = 0;
@@ -149,7 +149,8 @@ public class BitInputStream {
             
         return result;
     }
-    
+ 
+    @Override   
     public void close() throws IOException {
         in.close();
     }

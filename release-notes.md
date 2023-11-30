@@ -1,3 +1,8 @@
+Version 1.8.1 (unreleased)
+--------------
+* Updated BitOutputStream and BitInputStream to be AutoCloseable
+
+
 Version 1.8.0 (latest)
 --------------
 * fixed ObjectStateMessages to actually be UDP.
