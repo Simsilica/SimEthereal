@@ -1,13 +1,16 @@
 Version 1.8.1 (unreleased)
 --------------
 * Updated BitOutputStream and BitInputStream to be AutoCloseable
+* Updated StateReceiving to only log the full stale state if trace
+    logging is on.  Also changed to info because it's not really a sign
+    of a big problem unless it happens a lot.
 
 
 Version 1.8.0 (latest)
 --------------
 * fixed ObjectStateMessages to actually be UDP.
-* fixed a bug in how the ping time was calculated by modifying 
-    ClientStateMessage.resetReceivedTime() to take a timestamp instead of 
+* fixed a bug in how the ping time was calculated by modifying
+    ClientStateMessage.resetReceivedTime() to take a timestamp instead of
     getting it directly from System.nanoTime().
 * Converted a println() in ZoneManager to a log.warn() related to exceeding
     history size watchdog threshold.
@@ -16,10 +19,10 @@ Version 1.8.0 (latest)
     stranded if the object was what gave the state listener its 'center'.
 * Added StateListener.objectWarped() and the NetworkStateListener.objectWarped()
     implementation to fix the bug mentioned above.  This is a breaking change
-    for any apps implementing their own StateListener. 
+    for any apps implementing their own StateListener.
 
 
-Version 1.7.0 
+Version 1.7.0
 --------------
 * fixed an ID comparison bug in some watchdog code
 * Upgraded the build to use gradle 7.4.2
