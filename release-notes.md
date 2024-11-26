@@ -4,6 +4,9 @@ Version 1.8.1 (unreleased)
 * Updated StateReceiving to only log the full stale state if trace
     logging is on.  Also changed to info because it's not really a sign
     of a big problem unless it happens a lot.
+* Fixed an NPE in SharedObject.getWorldPosition() when called before
+    the object has a zone.  Now it will return null in this case and
+    the caller can deal with the issue.
 
 
 Version 1.8.0 (latest)

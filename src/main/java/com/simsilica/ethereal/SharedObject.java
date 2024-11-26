@@ -1,36 +1,36 @@
 /*
  * $Id$
- * 
+ *
  * Copyright (c) 2015, Simsilica, LLC
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions 
+ * modification, are permitted provided that the following conditions
  * are met:
- * 
- * 1. Redistributions of source code must retain the above copyright 
+ *
+ * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 
- * 2. Redistributions in binary form must reproduce the above copyright 
- *    notice, this list of conditions and the following disclaimer in 
- *    the documentation and/or other materials provided with the 
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
  *    distribution.
- * 
- * 3. Neither the name of the copyright holder nor the names of its 
- *    contributors may be used to endorse or promote products derived 
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
- * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
@@ -50,23 +50,23 @@ import org.slf4j.LoggerFactory;
  *  @author    Paul Speed
  */
 public class SharedObject {
-    
+
     static Logger log = LoggerFactory.getLogger(SharedObject.class);
-    
+
     private final SharedObjectSpace space;
-    
+
     // On the server, version is time.  On the client, version
     // is message sequence number.  We could probably use a seq# for
-    // both I suppose.    
+    // both I suppose.
     private long version;
     private final ObjectState current;
-    
+
     // Baseline version is always a sequence number as it's always
     // updated from network messages.
     private long baselineVersion;
     private ObjectState baseline;
     private ZoneKey zone;
-    
+
     // This is a bit of a kludge but only kind of.  On the client,
     // we may continue receiving updates for removed objects but we
     // only want to notify listeners about the removal once (unless the
@@ -77,48 +77,52 @@ public class SharedObject {
     // StateReceiver keep a whole other data structure just for this...
     // also we can more easily clear the flag here.
     private boolean notifiedRemoved;
-    
+
     public SharedObject( SharedObjectSpace space, int networkId, Long realId ) {
         this.space = space;
         this.current = new ObjectState(networkId, realId);
     }
- 
+
     public int getNetworkId() {
         return current.networkId;
     }
-    
+
     public Long getEntityId() {
         return current.realId;
     }
- 
+
     public Long getParentId() {
         // In an ObjectState, there is a difference between a null parent (no change)
         // and not having a parent.  Lack of a parent is now marked with a special
         // ID (-1).
         return current.parentId == ObjectState.NO_PARENT ? null : current.parentId;
     }
- 
+
     public long getVersion() {
         return version;
     }
-    
+
     public ObjectState getDelta() {
         return current.getDelta(baseline);
     }
-    
+
     public Vec3d getWorldPosition() {
-        Vec3d result = space.getObjectProtocol().getPosition(current); 
-        if( getParentId() == null ) { 
+        Vec3d result = space.getObjectProtocol().getPosition(current);
+        if( getParentId() == null ) {
+            if( zone == null ) {
+                log.warn("Zone is null for:" + getEntityId() + ", version:" + version + "  current:" + current);
+                return null;
+            }
             return zone.toWorld(result, result);
         } else {
             return result;
         }
     }
-    
+
     public Quatd getWorldRotation() {
         return space.getObjectProtocol().getRotation(current);
     }
-    
+
     /**
      *  Returns true if the current version is marked for removal
      *  even if the baseline is not.
@@ -126,7 +130,7 @@ public class SharedObject {
     public boolean isMarkedRemoved() {
         return current.isMarkedRemoved();
     }
- 
+
     /**
      *  Returns true if the object is fully marked for removal
      *  in both the current version and in the baseline (if it exists).
@@ -138,8 +142,8 @@ public class SharedObject {
         if( baseline == null ) {
             return false;
         }
-        
-        return baseline.isMarkedRemoved() && current.isMarkedRemoved();   
+
+        return baseline.isMarkedRemoved() && current.isMarkedRemoved();
     }
 
     /**
@@ -154,8 +158,8 @@ public class SharedObject {
         if( time > this.version ) {
             current.markRemoved();
         }
-    } 
- 
+    }
+
     /**
      *  The client side state receiver sets this flag if it has already
      *  notified listeners about a removal.  SharedObject will unset it
@@ -164,11 +168,11 @@ public class SharedObject {
     public void markNotifiedRemoved( boolean b ) {
         this.notifiedRemoved = b;
     }
- 
+
     /**
      *  Returns true if the client side state receiver has already notified
      *  listeners above the markRemoved.
-     */   
+     */
     public boolean isNotifiedRemoved() {
         return notifiedRemoved;
     }
@@ -176,18 +180,18 @@ public class SharedObject {
     /**
      *  Updates the current object state with the supplied world state.  This
      *  is called on the server as real object history/state is streamed to the
-     *  shared space. 
+     *  shared space.
      */
-    public boolean updateState( long time, ZoneKey zone, int zoneId, Long parentId, 
+    public boolean updateState( long time, ZoneKey zone, int zoneId, Long parentId,
                                 Vec3d pos, Quatd rot ) {
-                                
+
         if( time <= this.version ) {
             // We are already more current than the state provided
             // This can happen when we receive state for the same object multiple
             // times... like when the object overlaps two zones that we are watching.
             return false;
         }
-                
+
         if( current.isMarkedRemoved() ) {
             // Just a bit of a message just in case
             // Note: we may have been removed from another zone but now we
@@ -196,16 +200,16 @@ public class SharedObject {
                 log.debug("Unremoving:" + current.realId);
             }
         }
- 
+
         this.version = time;
- 
+
         this.zone = zone;
         current.zoneId = zoneId;
-        
+
         // Translate a null parent into the 'no parent' special ID.  For an ObjectState
         // there is a difference between null (no change) and not having a parent.
         current.parentId = parentId == null ? ObjectState.NO_PARENT : parentId;
-        
+
         Vec3d localPos;
         if( parentId == null ) {
             // Zone is our parent
@@ -216,17 +220,17 @@ public class SharedObject {
         }
         space.getObjectProtocol().setPosition(current, localPos);
         space.getObjectProtocol().setRotation(current, rot);
-        
+
         return true;
     }
- 
+
     public boolean updateBaseline( long sequence, ObjectState state ) {
-    
+
         if( baseline == null ) {
             baseline = state.clone();
-            
+
             // I've seen a case where the initial baseLine had no realId.
-            // This showed up with a lot of objects in a zone when my view 
+            // This showed up with a lot of objects in a zone when my view
             // crossed the zone boundary (but the zone was still visible).
             // I suspect it has to do with state getting confused as objects
             // move local zone IDs.
@@ -238,7 +242,7 @@ public class SharedObject {
             // -I don't know where the other update gets lost, though... was
             //  it in a zone that's now invisible and somehow got lost?
             // -it is absoluately related to message splitting because if splitting
-            //  is eliminated then there is no issue.  
+            //  is eliminated then there is no issue.
             // -given that it's related to splitting and crossing zone boundaries,
             //  I suspect it's related to how things like zones are interpretted
             //  between split messages.  For example, the local zone ID can only
@@ -270,7 +274,7 @@ public class SharedObject {
             // update the baseline.realId in these cases because in our
             // use-cases it never changes.
             // Note: this just keeps the app from crashing later but doesn't actually
-            // solve the issue.  The app keeps running and objects keep updating but 
+            // solve the issue.  The app keeps running and objects keep updating but
             // the 'hung' shared objects don't seem to resolve.
             //
             // Leaving the above comments and this check in for now in case I see it
@@ -280,29 +284,29 @@ public class SharedObject {
             // guarantee that was happening but I will note that after fixing how ACKs
             // are sent/received that I haven't seen this warning.  2019-02-25
             if( baseline.realId == null ) {
-                log.warn("initial baseline contains no realId, networkId:" + state.networkId 
+                log.warn("initial baseline contains no realId, networkId:" + state.networkId
                         + ", current realId:" + current.realId);
                 baseline.realId = current.realId;
-            }            
-            
+            }
+
             return true;
         }
-        
-        if( baselineVersion > sequence ) { 
+
+        if( baselineVersion > sequence ) {
             // We already have newwer state than this... perhaps
             // an ACK came out of order.
             return false;
         }
-        
+
         baselineVersion = sequence;
         baseline.applyDelta(state);
         return true;
     }
-    
+
     public boolean applyNetworkState( long sequence, ObjectState state, LocalZoneIndex zoneIndex ) {
         // This is kind of a three way merge of sorts.
-        // Whatever values are unset in the supplied state need to go 
-        // back to being baseline.  Whatever are set in the supplied 
+        // Whatever values are unset in the supplied state need to go
+        // back to being baseline.  Whatever are set in the supplied
         // state override baseline.
         //
         // So the easiest way is to reset current to baseline and
@@ -316,47 +320,47 @@ public class SharedObject {
             }
             return false;
         }
-        
+
         version = sequence;
- 
+
         // Reset our current version to baseline since that's what
         // the delta is based on
         if( baseline != null ) {
             current.set(baseline);
         }
-        
+
         // Now apply the delta
-        current.applyDelta(state);          
- 
+        current.applyDelta(state);
+
         //if( current.zoneId == -1 ) {
         //    throw new RuntimeException("No zoneId set for object with ID:" + current.realId);
         //}
         if( current.zoneId == -1 || current.realId == null ) {
             log.error("Error updating state, baseline=" + baseline + " current:" + current + " update:" + state);
         }
-        
+
         if( current.zoneId != -1 ) {
             // Make sure our zone key is up to date
             this.zone = zoneIndex.getZone(current.zoneId, this.zone);
         } else {
             log.warn("No zoneID set for object with ID:" + current.realId);
         }
- 
+
         if( !isMarkedRemoved() ) {
             // Things have changed and we might have told listeners it was
             // removed before but now it's not.
             notifiedRemoved = false;
-            
+
             // Notify the listeners about the object change
             space.objectUpdated(this);
-            
+
         } else if( !notifiedRemoved ) {
             notifiedRemoved = true;
             // Then notify listeners that the object has been removed
             // and mark it notified
             space.objectRemoved(this);
-        } 
-        
+        }
+
         return true;
     }
 }
