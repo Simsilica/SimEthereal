@@ -1,36 +1,36 @@
 /*
  * $Id$
- * 
+ *
  * Copyright (c) 2015, Simsilica, LLC
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions 
+ * modification, are permitted provided that the following conditions
  * are met:
- * 
- * 1. Redistributions of source code must retain the above copyright 
+ *
+ * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 
- * 2. Redistributions in binary form must reproduce the above copyright 
- *    notice, this list of conditions and the following disclaimer in 
- *    the documentation and/or other materials provided with the 
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
  *    distribution.
- * 
- * 3. Neither the name of the copyright holder nor the names of its 
- *    contributors may be used to endorse or promote products derived 
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
- * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
@@ -64,61 +64,61 @@ public class StateWriter {
      *  The connection to send state through.
      */
     private final HostedConnection conn;
-    private final ObjectStateProtocol objectProtocol;     
+    private final ObjectStateProtocol objectProtocol;
 
     // Track the state packets that we've sent to the client.
     // We will look these up again when we receive an ACK (and purge the
     // out of order ones)
     private final LinkedList<SentState> sentStates = new LinkedList<>();
-   
+
     // Track the ACKs we've received but that we've haven't received
     // a double-ack for yet.  We include these in every message header
-    // until we see an ACK for a message that already included them. 
+    // until we see an ACK for a message that already included them.
     private final IntRangeSet receivedAcks = new IntRangeSet();
     private IntRange[] receivedAcksArray = null;
 
     // Frame header information.
     private long frameTime;
     private long legacySequence;
-    private ZoneKey centerZone;    
+    private ZoneKey centerZone;
     private long centerZoneId;
- 
-    // The accumulate state that we will flush when required   
-    private FrameState currentFrame;   
- 
- 
+
+    // The accumulate state that we will flush when required
+    private FrameState currentFrame;
+
+
     private static final int UDP_HEADER = 50;
-    private static final int SM_HEADER = 5;    
+    private static final int SM_HEADER = 5;
     private int mtu = 1500;
     private int bufferSize = mtu - UDP_HEADER - SM_HEADER; // 8 bytes of slop for internal protocol
- 
+
     private SentState outbound;
     private int nextMessageId = 0;
     private int headerBits;
     private int estimatedSize;
- 
+
     // Time source we will use for timestamping outbound messages.
-    // This time should be compatible with the times provided by the 
+    // This time should be compatible with the times provided by the
     // frame updates or things will get weird.
     private TimeSource timeSource;
-    
+
     private ConnectionStats stats;
 
     // Keep track of some stats to help us improve the
-    // received acks watchdog 
+    // received acks watchdog
     private int mostRecentAckedMessageId;
-    private int maxMessageDelta; 
+    private int maxMessageDelta;
 
     // Keep track of the number of times we have to split a frame, if any
     private int messagesPerFrame;
-    
+
     public StateWriter( HostedConnection conn, ObjectStateProtocol objectProtocol, TimeSource timeSource, ConnectionStats stats ) {
         this.conn = conn;
         this.objectProtocol = objectProtocol;
         this.timeSource = timeSource;
-        this.stats = stats;   
+        this.stats = stats;
     }
-    
+
     /**
      *  Sets the desired maximum message size.  Typically the ideal situation
      *  would be to keep this under the MTU of the connection.  By default,
@@ -130,18 +130,18 @@ public class StateWriter {
         this.mtu = max;
         this.bufferSize = mtu - UDP_HEADER - SM_HEADER; // 8 bytes of slop for internal protocol
     }
-    
+
     public int getMaxMessageSize() {
         return mtu;
-    }     
+    }
 
     public SentState ackSentState( int messageId ) {
-     
+
         if( log.isTraceEnabled() ) {
-            log.trace("ackSentState(" + messageId + ")");            
+            log.trace("ackSentState(" + messageId + ")");
             log.trace("  sentStates.size():" + sentStates.size() + "  recAcks.size():" + receivedAcks.size());
         }
-        
+
         // Keep track of the most recent message ID that has been ACK'ed just
         // so we can use the lag amount for other checks.
         if( messageId > mostRecentAckedMessageId ) {
@@ -154,7 +154,7 @@ public class StateWriter {
         if( sentStates.isEmpty() ) {
             return null;
         }
- 
+
         // Go through the kept messages until we get the one
         // we are looking for.  We purge any that are older than
         // we are looking for because they are 'out of order' and
@@ -164,15 +164,15 @@ public class StateWriter {
             SentState s = it.next();
             if( log.isTraceEnabled() ) {
                 log.trace("  checking:" + s.messageId + " and " + messageId);
-            }            
+            }
             if( s.messageId == messageId ) {
                 if( log.isTraceEnabled() ) {
                     log.trace("     found:" + messageId);
-                }            
+                }
                 // This is the one we wanted to see
-                
+
                 // So, we have received an ACK for a message that we
-                // sent previously.  This means that the client really does 
+                // sent previously.  This means that the client really does
                 // have that message... and thus all of the double-ACKs we
                 // sent as part of that message.  We don't need to send them
                 // anymore and can remove them from our ACK header
@@ -181,31 +181,31 @@ public class StateWriter {
                         boolean b = receivedAcks.remove(ack);
                         if( b && log.isTraceEnabled() ) {
                             log.trace("       removed recvd acks:" + ack);
-                        }                    
+                        }
                         receivedAcksArray = null;
                     }
                 }
- 
+
                 if( log.isTraceEnabled() ) {
                     log.trace("       adding recvd ack:" + messageId);
-                }                    
+                }
                 // Now we need to start ACKing this message
                 receivedAcks.add(messageId);
                 receivedAcksArray = null;
-                
+
                 // This message has been fully handled now, we can
                 // remove it from tracking
                 it.remove();
                 return s;
             }
-            
+
             // If our passed messageId is before this message's ID then
             // it is in the future and we will not find what we are looking
             // for.  The sent states list is in send order.
-            if( messageId < s.messageId ) { //isBefore(messageId, s.messageId) ) {            
+            if( messageId < s.messageId ) { //isBefore(messageId, s.messageId) ) {
                 // Probably we received this messageId after we purged
                 // it from getting a later messageId. ie: out of order messages.
-                
+
                 // It occurs to me that if messageId is newer than anything we've
                 // seen so far then this is a bug.  ie: the server says 'use this
                 // latest state' and for some reason we don't have it.  However,
@@ -217,23 +217,27 @@ public class StateWriter {
                 // ignore acks older than a certain level and search back from
                 // newest first (the caller that is) but one message might not
                 // have the complete state that another has part of.
- 
+
                 // Adding a log to see if I see this in the wild.  2019-02-24
-                log.info("messageId:" + messageId + " is earlier than s.messageId:" + s.messageId);                           
-                
+                log.info("messageId:" + messageId + " is earlier than s.messageId:" + s.messageId);
+
                 return null;
             }
 
             if( log.isTraceEnabled() ) {
                 log.trace("    expiring:" + s.messageId);
             }
-                        
+
             // Finally, remove this element as it's older than what we've
             // been searching for and we only want the latest stuff
-log.warn("Removing old unmatched message:" + s.messageId);            
-            it.remove();             
+            if( log.isInfoEnabled() ) {
+                log.info("Removing old unmatched message:" + s.messageId);
+            }
+            // Maybe we want to keep track of this in a stat but it otherwise
+            // happens regularly.
+            it.remove();
         }
- 
+
         // We didn't find it.
         return null;
     }
@@ -241,30 +245,30 @@ log.warn("Removing old unmatched message:" + s.messageId);
     public void startFrame( long time, ZoneKey centerZone ) throws IOException {
 
         // Watchdog to check for mismatched time sources.
-        long delta = Math.abs(time - timeSource.getTime()); 
+        long delta = Math.abs(time - timeSource.getTime());
         if( delta > 1000000000 ) {
             // more then a second difference means they are waaaaaay off.
             // Even a ms difference would be large.
             log.warn("Mismatched time sources.  Delta:" + (delta/1000000000.0) + " seconds");
         }
-    
-        // End any previous frame that we might be in the middle of    
+
+        // End any previous frame that we might be in the middle of
         endFrame();
- 
+
         // Reset the message counter.  We use this to see how many messages
         // we split a frame into.  Note: it could stay 0 if we are stacking
-        // multiple frames into a single message.        
+        // multiple frames into a single message.
         messagesPerFrame = 0;
-                
+
         // Make sure we have a current message started
         startMessage();
-            
+
         this.frameTime = time;
         this.centerZone = centerZone;
         this.centerZoneId = centerZone != null ? centerZone.toLongId() : -1;
         this.legacySequence = time & 0xffffffffffff00L;
     }
-    
+
     public void addState( ObjectState state ) throws IOException {
         if( currentFrame == null ) {
             if( frameTime == 0 ) {
@@ -272,16 +276,16 @@ log.warn("Removing old unmatched message:" + s.messageId);
             }
             // Then create the frame
             currentFrame = new FrameState(frameTime, legacySequence++, centerZoneId);
-        }                    
+        }
         currentFrame.addState(state, objectProtocol);
     }
 
     protected void startMessage() {
 
-        if( outbound != null ) { 
+        if( outbound != null ) {
             return;
         }
-        
+
         if( log.isTraceEnabled() ) {
             log.trace("startMessage() frameTime:" + frameTime);
         }
@@ -301,12 +305,12 @@ log.warn("Removing old unmatched message:" + s.messageId);
         int msgDelta = nextMessageId - mostRecentAckedMessageId;
         if( msgDelta > maxMessageDelta ) {
             maxMessageDelta = msgDelta;
-        }               
- 
+        }
+
         // Build the ACKs array
         if( receivedAcksArray == null ) {
             receivedAcksArray = receivedAcks.toRangeArray();
-        }         
+        }
 
         // A new watchdog that is friendlier to the range set and takes into account
         // that SentState will overflow for a range count higher than 255.
@@ -317,11 +321,11 @@ log.warn("Removing old unmatched message:" + s.messageId);
             // Cheap to calculate size so let's just see if things are getting crazy
             int size = receivedAcks.size();
             if( log.isTraceEnabled() ) {
-                log.trace("startMessage() -> receivedAcks.size():" + size 
+                log.trace("startMessage() -> receivedAcks.size():" + size
                         + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
                         + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
             }
-            
+
             // It's possible that for large lag between ACK messages and sent messages
             // that the received acks can be sizeable without indicating a problem.
             // If we've only seen message ID #500 ack'ed but we just sent out message ID
@@ -332,31 +336,31 @@ log.warn("Removing old unmatched message:" + s.messageId);
                 log.error("Very bad things have happened in the receivedAcks set, size:" + size + "  maxMessageDelta:" + maxMessageDelta);
             }
         } else if( receivedAcksArray.length > 128 ) {
-            log.warn("Received acks set is getting very fragmented, number of ranges:" + receivedAcksArray.length); 
+            log.warn("Received acks set is getting very fragmented, number of ranges:" + receivedAcksArray.length);
             if( log.isTraceEnabled() ) {
                 int size = receivedAcks.size();
-                log.trace("startMessage() -> receivedAcks.size():" + size 
+                log.trace("startMessage() -> receivedAcks.size():" + size
                         + " mostRecentAckedMessageId:" + mostRecentAckedMessageId + "  nextMessageID:" + nextMessageId
                         + " difference:" + msgDelta + "  max diff:" + maxMessageDelta);
             }
         } else if( receivedAcksArray.length > 255 ) {
             throw new RuntimeException("Highly fragmented received ACKs ranges:" + receivedAcksArray.length
                                        + " Very bad things have happened in the receivedAcks set.");
-        }  
- 
- 
+        }
+
+
         this.outbound = new SentState(-1, receivedAcksArray, new ArrayList<FrameState>());
         this.headerBits = outbound.getEstimatedHeaderSize();
         //log.info("Estimated header size:" + (headerBits/8.0) + " bytes including:" + receivedAcksArray.length + " recvd ACK ranges.");
- 
-        int bytes = headerBits/8;        
-        if( bytes > bufferSize ) {       
+
+        int bytes = headerBits/8;
+        if( bytes > bufferSize ) {
             log.error("State header size exceeds max buffer size, including:" + receivedAcksArray.length + " recvd ACK ranges.");
         } else if( bytes > (bufferSize/2) ) {
             log.warn("State header size exceeds half max buffer size, including:" + receivedAcksArray.length + " recvd ACK ranges.");
-        } 
-                
-        this.estimatedSize = headerBits;       
+        }
+
+        this.estimatedSize = headerBits;
     }
 
     /**
@@ -364,17 +368,17 @@ log.warn("Removing old unmatched message:" + s.messageId);
      *  the previous outbound message and starts a new one.
      */
     protected void endFrame() throws IOException {
-    
+
         if( currentFrame == null ) {
             // Nothing to do
             return;
         }
-        
+
         if( outbound == null ) {
             // I've seen this happen once but I think it was likely because of
-            // the runtime exception in startMessage(). 
+            // the runtime exception in startMessage().
             throw new RuntimeException("endFrame() called without an open startMessage()");
-        }    
+        }
 
         // One of the following cases is true:
         // 1) we can fit the frame in the current message.
@@ -392,13 +396,13 @@ log.warn("Removing old unmatched message:" + s.messageId);
             currentFrame = null;
             if( log.isTraceEnabled() ) {
                 log.trace("frame in size remaining.  Messages per frame:" + messagesPerFrame);
-            }            
+            }
             return;
         }
-                   
+
         // Split the frame or send it completely in the next
         // message... either way, end the current message.
-        // 
+        //
         // Basic logic:
         //  -while still stuff in frame
         //      -endMessage
@@ -406,14 +410,14 @@ log.warn("Removing old unmatched message:" + s.messageId);
         FrameState frame = currentFrame;
         while( frame != null ) {
             // If there were already frames queued to go then we need
-            // to close them out and send them.  This frame won't fit in 
+            // to close them out and send them.  This frame won't fit in
             // the message as is and we'd like to avoid splitting it if we can.
             // So we close this message out and start a new one... and hope it fits.
             if( !outbound.frames.isEmpty() ) {
                 // Then we need to flush the current message first
                 endMessage();
             }
-            
+
             // Make sure there is a message started if needed
             startMessage();
 
@@ -434,10 +438,10 @@ log.warn("Removing old unmatched message:" + s.messageId);
             //      any harm to calculate again.
             bitsRemaining = (bufferSize * 8) - estimatedSize;
             FrameState split = frame.split(bitsRemaining, objectProtocol);
-            
+
             // Add the unsplit part to the current message
             outbound.frames.add(frame);
-            
+
             // Need to update the estimated size because we may leave the message
             // open when dropping out of this loop.  ie: maybe we only wrote a tiny last
             // part of a frame and there is still room for more frames later.
@@ -445,9 +449,9 @@ log.warn("Removing old unmatched message:" + s.messageId);
             // However, the old line was as above and not using the actual added
             // frame size if we were making a second pass through this loop.
             // This can happen when the frame was too big for even one message.
-            frameSize = frame.getEstimatedBitSize() + 1; 
-            estimatedSize += frameSize; 
- 
+            frameSize = frame.getEstimatedBitSize() + 1;
+            estimatedSize += frameSize;
+
             // At this point, we've either fully added the frame to the next
             // outbound message or we had to split it.  If we full added it then
             // the message stays open to see if the next frame will fit... we fall
@@ -466,7 +470,7 @@ log.warn("Removing old unmatched message:" + s.messageId);
             // Though I guess the partial end of frame we wrote could set us
             // up on the next endFrame() with items already in the queue and an
             // inaccurate bitsRemaining again... so this error case is probably
-            // pretty common but for some reason didn't show up in my own meager 
+            // pretty common but for some reason didn't show up in my own meager
             // stress testing.  In the best case, bitsRemaining is wrong but still
             // large enough to fit more data into.  I guess the problem comes when
             // bitsRemaining from whatever was waiting in the outbound queue would
@@ -480,27 +484,27 @@ log.warn("Removing old unmatched message:" + s.messageId);
             // we'll get an exception.
             //
             // Note: The first pass through the loop, calculating bitsRemaining is
-            // redundant but costs little. 
- 
+            // redundant but costs little.
+
             // TODO: add a split counter to a statistics object
-            
+
             // It occurs to me that we can potentially _greatly_ reduce the size
             // of our frame states if we remove the redundant information.
             //
             // For example, here is one string dump of an outbound SentState object:
-            // 
+            //
             // SentState[messageId=-1, created=2066993764023919, frames=[
             //   FrameState[sequence=2066993714059008, columnId=-1, states=[
-            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]], 
+            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]],
             //   FrameState[sequence=2066993730678528, columnId=-1, states=[
-            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]], 
+            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]],
             //   FrameState[sequence=2066993746304256, columnId=-1, states=[
-            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]], 
+            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]],
             //   FrameState[sequence=2066993762899968, columnId=-1, states=[
-            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]]]]            
+            //      espace.ethereal.net.ObjectState[id=10, realId=39, zoneId=2, positionBits=cec400004e3d, rotationBits=f04bd5800800]]]]]
             //
             // Notice all of the redundant information.  Compressing it could get kind
-            // of tricky but it's worth thinking about.  It would require a lot more 
+            // of tricky but it's worth thinking about.  It would require a lot more
             // tracking than we are doing to do it on the fly and we can't count on the
             // caller to do it because they wouldn't know where we'll break the messages.
             // Still, it's very tantalzing.  That SentState is 169 bytes and could be reduced
@@ -521,50 +525,50 @@ log.warn("Removing old unmatched message:" + s.messageId);
             // the realId, zoneId, etc. will already be very stable and thus reduce to 1-bit.
             // position and rotation will continuously update and when they don't it is likely
             // that the object won't even get any state updates.
-            // It's kind of a relief, really.    
- 
+            // It's kind of a relief, really.
+
             if( split != null ) {
                 // The frame was big enough that it wouldn't fit in a new
                 // message so we'll try the rest in another pass.
                 //System.out.println( "Splitting frame.  remaining:" + split.states.size() );
             }
-            frame = split;                
+            frame = split;
         }
-        
+
         currentFrame = null;
         if( log.isTraceEnabled() ) {
             log.trace("end of split frame.  Messages per frame:" + messagesPerFrame);
-        }            
+        }
     }
 
     protected void endMessage() throws IOException {
-    
+
         //long timestamp = System.nanoTime();
         long timestamp = timeSource.getTime();
-        int id = nextMessageId++;    
+        int id = nextMessageId++;
 
         ObjectStateMessage msg = new ObjectStateMessage(id, timestamp, null);
         msg.setReliable(false);
         msg.setState(outbound, objectProtocol);
         sentStates.add(outbound);
-        
+
         if( log.isTraceEnabled() ) {
             log.trace("Sending message ID:" + id);
-        }  
+        }
         conn.send(msg);
-  
+
         stats.addMessageSize(ObjectStateMessage.HEADER_SIZE + msg.getBuffer().length);
-        
+
         outbound = null;
     }
-    
+
     public void flush() throws IOException {
         endFrame();
- 
-        if( outbound == null ) {    
+
+        if( outbound == null ) {
             return; // already flushed
         }
-        
+
         endMessage();
     }
 }

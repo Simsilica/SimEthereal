@@ -7,6 +7,7 @@ Version 1.8.1 (unreleased)
 * Fixed an NPE in SharedObject.getWorldPosition() when called before
     the object has a zone.  Now it will return null in this case and
     the caller can deal with the issue.
+* Downgraded the "Removing old unmatched message" WARN log to INFO.
 
 
 Version 1.8.0 (latest)
