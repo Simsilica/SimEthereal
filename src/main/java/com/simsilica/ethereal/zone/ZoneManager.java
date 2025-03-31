@@ -1,36 +1,36 @@
 /*
  * $Id$
- * 
+ *
  * Copyright (c) 2015, Simsilica, LLC
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions 
+ * modification, are permitted provided that the following conditions
  * are met:
- * 
- * 1. Redistributions of source code must retain the above copyright 
+ *
+ * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 
- * 2. Redistributions in binary form must reproduce the above copyright 
- *    notice, this list of conditions and the following disclaimer in 
- *    the documentation and/or other materials provided with the 
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
  *    distribution.
- * 
- * 3. Neither the name of the copyright holder nor the names of its 
- *    contributors may be used to endorse or promote products derived 
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE 
- * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
@@ -51,11 +51,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  *  Manages all of the zones for all of the players.  This
- *  is used to update the status of active objects.  The zone 
+ *  is used to update the status of active objects.  The zone
  *  manager then makes sure that information gets to where it needs to go.
  *
  *  <p>Object updates need to be done in the context of a 'frame' so
- *  that the updates can be properly grouped together.  To do this, 
+ *  that the updates can be properly grouped together.  To do this,
  *  the game code that is reporting updates needs to call the ZoneManager
  *  methods using a specific life cycle:</p>
  *
@@ -75,15 +75,15 @@ import org.slf4j.LoggerFactory;
  *  outside of a begin/end block will enqueue the removal for the next begin/end
  *  block.  add() will remove it from this queue in case that removal hasn't been
  *  sent yet.  Normally add() is not required as updateEntity() will add the
- *  entity if it hasn't already seen it.</lI>    
+ *  entity if it hasn't already seen it.</lI>
  *  </ul>
  *
  *  @author    Paul Speed
  */
 public class ZoneManager {
     static Logger log = LoggerFactory.getLogger(ZoneManager.class);
- 
-    private ZoneGrid grid;   
+
+    private ZoneGrid grid;
     private final Map<Long, ZoneRange> index = new HashMap<>();
 
     // Per frame, keep track of the keys we did not get updates for.
@@ -104,11 +104,11 @@ public class ZoneManager {
     private int historyBacklog;
     private long[] historyIndex;
     private int historySize = 0;
-    
+
     // For perf tracking
     private long nextLog = 0;
     private long updateStartTime = 0;
-    private long totalUpdateTime = 0; 
+    private long totalUpdateTime = 0;
 
     // Control which ZoneRange implementation is used... currently
     // there are only two and we'll default to the older better-tested
@@ -126,23 +126,23 @@ public class ZoneManager {
     public ZoneManager( int zoneSize ) {
         this(new ZoneGrid(zoneSize));
     }
- 
+
     /**
      *  Creates a new ZoneManager with the specified grid representation and
      *  with a history backlog of 12.
-     */   
+     */
     public ZoneManager( ZoneGrid grid ) {
         this(grid, 12);
     }
- 
+
     /**
      *  Creates a new zone manager with the specified grid representation and
      *  history backlog.
      *
      *  @param grid The grid settings used for zone partitioning.
      *  @param historyBacklog Designates how many frames of history to keep
-     *  in each zone. 
-     */   
+     *  in each zone.
+     */
     public ZoneManager( ZoneGrid grid, int historyBacklog ) {
         this.grid = grid;
         this.historyBacklog = historyBacklog;
@@ -165,7 +165,7 @@ public class ZoneManager {
      *  The older internal zone range implementation would not support objects
      *  that spanned more than two zones in any direction (and will log an error
      *  when it encounters this).  The thinking was that it could use a fixed size
-     *  array and avoid constantly recreating it.  The thing is it was always 
+     *  array and avoid constantly recreating it.  The thing is it was always
      *  cloning it internally anyway whenever the range changed.
      *  The new code builds its array dynamically and can essentially support
      *  any zone range.  It's probably just as good and just as memory efficient.
@@ -173,7 +173,7 @@ public class ZoneManager {
     public void setSupportLargeObjects( boolean b ) {
         this.dynamicZoneRange = b;
     }
-    
+
     public boolean getSupportLargeObjects() {
         return dynamicZoneRange;
     }
@@ -181,21 +181,21 @@ public class ZoneManager {
     /**
      *  Set to true if history should be collected or false if object updates
      *  should be ignored.  This method is used internal to the framework for
-     *  managing the lifecycle of dependent components.  When a ZoneManager is 
-     *  not part of an active state collection process then it's important that 
-     *  it not collect any history because it might overflow its buffers since purge() 
-     *  is never called.  Generally, the StateCollector will turn history collection on 
+     *  managing the lifecycle of dependent components.  When a ZoneManager is
+     *  not part of an active state collection process then it's important that
+     *  it not collect any history because it might overflow its buffers since purge()
+     *  is never called.  Generally, the StateCollector will turn history collection on
      *  when it is ready to start periodically purging history.
      *  Defaults to false until a state collection process turns it on.
      */
     public void setCollectHistory( boolean b ) {
         this.collectHistory = b;
     }
-    
+
     /**
      *  Returns true if the ZoneManager is currently collecting history, false otherwise.
      *  When a ZoneManager is not part of an active StateCollector then it's important
-     *  that it not track history. 
+     *  that it not track history.
      */
     public boolean getCollectHistory() {
         return collectHistory;
@@ -289,10 +289,10 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
     public void beginUpdate( long time ) {
         if( log.isTraceEnabled() ) {
             log.trace("beginUpdate(" + time + ")");
-        }    
+        }
         updateStartTime = System.nanoTime();
         updateTime = time;
-        
+
         /*if( lastTime > 0 ) {
             long delta = time - lastTime;
             System.out.println("zone time delta frame[" + timeCheckCounter + "]:" + ((delta)/1000000.0) + " ms");
@@ -311,17 +311,17 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             nextFrameTime = System.nanoTime() + 1000000000L;
         }
         // Keep track of the IDs for objects that receive no updates.
-        // (by subtraction)  Added for no-update support.        
+        // (by subtraction)  Added for no-update support.
         // Seed it with all known object IDs.
         noUpdates = new HashSet<>(index.keySet());
-        
+
         // Remove any of the pending deletes
         noUpdates.removeAll(pendingRemoval);
-        
+
         for( Zone z : zones.values() ) {
             z.beginUpdate(time);
         }
-        
+
         // Deactivate any pending entities
         for( Long id : pendingRemoval ) {
             if( log.isDebugEnabled() ) {
@@ -330,59 +330,59 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             ZoneRange range = index.remove(id);
             if( log.isDebugEnabled() ) {
                 log.debug("range:" + range);
-            }            
+            }
             if( range != null ) {
                 range.leave(id);
             }
         }
-        pendingRemoval.clear();                            
+        pendingRemoval.clear();
     }
- 
+
     /**
      *  Updates an entity's position in the zone space.
      *
      *  @param id The ID of the object that has been moved.
      *  @param active Currently unused.  Pass 'true' or the non-sleeping state of your object
      *          if you care to be accurate for future changes.
-     *  @param p The position of the object in world space. 
+     *  @param p The position of the object in world space.
      *  @param orientation The orientation of the object in world space.
      *  @param bounds The 3D bounds of the object in WORLD SPACE.  This is why it's passed
      *          every update and it allows it to change to be accurate as the object rotates and
      *          so on.  But more importantly, it pushes the updating of the bounds to the thing
      *          actually controlling the position which might be able to more efficiently update
-     *          it than we could internally.  
+     *          it than we could internally.
      */
     public void updateEntity( Long id, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
 
         if( log.isTraceEnabled() ) {
             log.trace("updateEntity(" + id + ", " + active + ", " + p + ")");
         }
-         
+
         // If one day you are looking in here and wondering why 'id' is a Long instead of
         // just 'long'... it's because we internally use it as a key for a bunch of things.
         // By exposing the object version to the caller they can avoid the excessive autoboxing
         // that would occure if we did it internally.  By projecting outward, we can even
         // encourage the caller to also keep Long IDs and then the autoboxing never happens
         // but at the very least, we only do it once in here.
- 
+
         // Updating a regular entity is an implied removal of the parent ID
         // if it previously had a parent ID.  Otherwise, the parent version of
         // updateEntity() is the same... so we'll just delegate to it. -pspeed:2020-07-04
-        updateEntity(null, id, active, p, orientation, bounds);   
-        
-        // Temporarily leaving the original code here just for easy reference.  It 
-        // should be removed once we feel really solid about the other updateEntity() 
+        updateEntity(null, id, active, p, orientation, bounds);
+
+        // Temporarily leaving the original code here just for easy reference.  It
+        // should be removed once we feel really solid about the other updateEntity()
         // method.  -pspeed:2020-07-24
         //
-        //Vec3i minZone = grid.worldToZone(bounds.getMin()); 
-        //Vec3i maxZone = grid.worldToZone(bounds.getMax()); 
+        //Vec3i minZone = grid.worldToZone(bounds.getMin());
+        //Vec3i maxZone = grid.worldToZone(bounds.getMax());
         //
         //ZoneRange range = getZoneRange(id, true);
         //if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
         //    if( !range.setRange(minZone, maxZone) ) {
-        //        log.error("Error setting range for object:" + id 
+        //        log.error("Error setting range for object:" + id
         //                  + " from bounds:" + bounds
-        //                  + " grid size:" + grid.getZoneSize() 
+        //                  + " grid size:" + grid.getZoneSize()
         //                  + " likely too small for object with extents:" + bounds.getExtents());
         //    }
         //}
@@ -392,59 +392,59 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         //
         //// Mark that we've received an update for this object.  Added for no-change support.
         //noUpdates.remove(id);
-    }    
+    }
 
     public void updateEntity( Long parent, Long child, boolean active, Vec3d p, Quatd orientation, AaBBox bounds ) {
- 
+
         ZoneRange range = getZoneRange(child, true);
         range.setParent(parent);
-                
+
         ZoneRange parentRange = parent == null ? null : getZoneRange(parent, false);
         if( parent != null && parentRange == null ) {
             log.warn("Child:" + child + " has no active parent:" + parent);
         }
-        
-        Vec3i minZone; 
-        Vec3i maxZone; 
+
+        Vec3i minZone;
+        Vec3i maxZone;
         if( parentRange == null ) {
             // Treat it like a world parent until we have a real
             // parent.
-            
+
             // Clear the parent since we aren't using it
             range.setParent(null);
 
-            minZone = grid.worldToZone(bounds.getMin()); 
-            maxZone = grid.worldToZone(bounds.getMax()); 
+            minZone = grid.worldToZone(bounds.getMin());
+            maxZone = grid.worldToZone(bounds.getMax());
         } else {
             // Children always adopt the parent's range.
             minZone = parentRange.getMin();
             maxZone = parentRange.getMax();
-        } 
+        }
 
         if( !minZone.equals(range.getMin()) || !maxZone.equals(range.getMax()) ) {
-          
+
             if( !range.setRange(minZone, maxZone) ) {
-                log.error("Error setting range for object:" + child 
+                log.error("Error setting range for object:" + child
                         + " from bounds:" + bounds
-                        + " grid size:" + grid.getZoneSize() 
+                        + " grid size:" + grid.getZoneSize()
                         + " likely too small for object with extents:" + bounds.getExtents());
             }
-        }            
+        }
 
         // Now we blast an update to the zones for any listeners to handle.
         range.sendUpdate(p.clone(), orientation.clone());
-        
+
         // Mark that we've received an update for this object.  Added for no-change support.
         noUpdates.remove(child);
     }
- 
+
     /**
      *  Called to end update collection for the current 'frame'.  See: beginUpdate()
-     */  
+     */
     public void endUpdate() {
-    
+
         log.trace("endUpdate()");
-        
+
         // If we aren't really collecting history then don't do a commit.
         // We know how the zones push their history so doing this avoids
         // history accumulation.
@@ -455,9 +455,9 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         if( log.isTraceEnabled() ) {
             log.trace("No-updates for keys:" + noUpdates);
         }
-        
+
         // Go through any of the objects that didn't get updates and send
-        // no-update events.  Added for no-change support.     
+        // no-update events.  Added for no-change support.
         if( noUpdates != null && !noUpdates.isEmpty() ) {
             for( Long id : noUpdates ) {
                 ZoneRange range = getZoneRange(id, false);
@@ -467,46 +467,46 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                 }
                 range.sendNoChange();
             }
-        } 
-    
+        }
+
         // Obtain the general write lock for history
         // For all of the other data structures, we know we
         // are the only reader and so don't need any read locks.
-        log.trace("writing history");        
+        log.trace("writing history");
         historyLock.lock();
         try {
             // If we're about to overflow history then be a little
             // more graceful than throwing IndexOutOfBounds
             if( historySize + 1 >= historyIndex.length ) {
                 log.warn("Pausing history collect.  Overflow detected, current history size:" + historySize + " max:" + historyBacklog);
-                return;            
+                return;
             }
-        
+
             historyIndex[historySize++] = updateTime;
-            
+
             for( Iterator<Map.Entry<ZoneKey,Zone>> i = zones.entrySet().iterator(); i.hasNext(); ) {
                 Map.Entry<ZoneKey,Zone> e = i.next();
-                Zone z = e.getValue();                
+                Zone z = e.getValue();
                 if( !z.commitUpdate() && z.isEmpty() ) {
                     if( log.isDebugEnabled() ) {
                         log.debug("Zone no longer active:" + e.getKey() + "  active zones:" + zones.keySet() );
-                    }                    
+                    }
                     // Now we can remove the zone
-                    i.remove();                    
-                }                 
+                    i.remove();
+                }
             }
         } finally {
-            log.trace("done writing history");        
+            log.trace("done writing history");
             historyLock.unlock();
         }
-        
+
         updateTime = -1;
         long end = System.nanoTime();
         totalUpdateTime += (end - updateStartTime);
         if( end > nextLog ) {
             nextLog = end + 1000000000L;
             totalUpdateTime = 0;
-        } 
+        }
     }
 
     /**
@@ -514,57 +514,57 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
      *  has been collected since the last call to purgeState().  Generally, this
      *  method is called internal to the framework, usually by the StateCollector.
      *  The return array will contain one StateFrame[] for every beginUpdate()/endUpdate()
-     *  block since the last purgeState().  Each StateFrame will contain all of the 
+     *  block since the last purgeState().  Each StateFrame will contain all of the
      *  state updates for that frame divided into separate StateBlocks, one per active
      *  zone.
      */
     public StateFrame[] purgeState() {
-    
+
         // Obtain the general write lock for history since
-        // we will be purging it        
+        // we will be purging it
         historyLock.lock();
         try {
             int high = 5;
-            if( historySize > high ) {            
+            if( historySize > high ) {
                 //System.out.println( "Purging >" + high + " history frames:" + historySize );
                 log.warn("Purging >" + high + " history frames:" + historySize );
             }
             StateFrame[] state = new StateFrame[historySize];
- 
+
             // Go through each zone and merge its history into an array
-            // of StateFrames.                                               
+            // of StateFrames.
             for( Iterator<Map.Entry<ZoneKey,Zone>> i = zones.entrySet().iterator(); i.hasNext(); ) {
                 Map.Entry<ZoneKey,Zone> e = i.next();
                 Zone z = e.getValue();
-                StateBlock[] history = z.purgeHistory(); 
- 
+                StateBlock[] history = z.purgeHistory();
+
                 // Merge this zone's state blocks into the coinciding
-                // StateFrames.               
+                // StateFrames.
                 int h = 0;
                 for( StateBlock b : history ) {
                     if( b.getTime() < historyIndex[h] ) {
-                        throw new RuntimeException( "StateBlock precedes history index. Time:" + b.getTime() 
+                        throw new RuntimeException( "StateBlock precedes history index. Time:" + b.getTime()
                                                     + "  history index:" + h + "  history time:" + historyIndex[h] );
                     }
- 
+
                     // A given zone may have gaps in its history as compared to
-                    // global state.                    
+                    // global state.
                     while( b.getTime() > historyIndex[h] ) {
                         h++;
                     }
-                    
+
                     if( state[h] == null ) {
                         state[h] = new StateFrame(historyIndex[h], zones.size());
                     }
                     state[h].add(b);
-                    
+
                     // Keep track of the global warps for this history frame
-                    state[h].addWarps(b.getWarps());    
-                }               
+                    state[h].addWarps(b.getWarps());
+                }
             }
- 
+
             historySize = 0;
-            return state;               
+            return state;
         } finally {
             historyLock.unlock();
         }
@@ -583,7 +583,7 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         }
         pendingRemoval.remove(id);
     }
-    
+
     /**
      *  Removes the entity from the zone manager.  This can also be
      *  used to temporarily deactivate an entity but then add() must be
@@ -600,13 +600,13 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         if( range == null ) {
             return;
         }
- 
-        // See if we are in the middle of a frame update or not           
+
+        // See if we are in the middle of a frame update or not
         if( updateTime < 0 ) {
-        
+
             // Outside of a frame update we need to hold onto
             // the removal until we have proper history setup.
-            
+
             // Save it for later
             if( log.isDebugEnabled() ) {
                 log.debug("ZONE:  --- pending:" + id);
@@ -620,7 +620,7 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             index.remove(id);
             range.leave(id);
         }
-    }    
+    }
 
     protected Zone getZone( ZoneKey key, boolean create ) {
         Zone result = zones.get(key);
@@ -628,10 +628,10 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             result = new Zone(key, historyBacklog);
             if( updateTime >= 0 ) {
                 result.beginUpdate(updateTime);
-            } 
+            }
             zones.put(key, result);
         }
-        return result;        
+        return result;
     }
 
     /**
@@ -643,19 +643,19 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         if( zone == null ) {
             log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
             return;
-        } 
-        zone.update(parent, id, p, orientation);  
+        }
+        zone.update(parent, id, p, orientation);
     }
 
     protected void objectWarped( Long parent, Long id, ZoneKey key ) {
         if( log.isDebugEnabled() ) {
             log.debug("objectWarped(" + parent + ", " + id + ", " + key + ")");
-        }    
+        }
         Zone zone = getZone(key, false);
         if( zone == null ) {
             log.warn( "Body is updating a zone that does not exist, id:" + id + ", zone:" + key );
             return;
-        } 
+        }
         zone.warp(parent, id);
     }
 
@@ -663,13 +663,13 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         if( log.isDebugEnabled() ) {
             log.debug("ZONE: enter zone:" + id + "  " + key);
         }
-        
+
         // Add this entity to the zone's children.
         // If there is no zone created yet then create one
         Zone zone = getZone(key, true);
         zone.addChild(id);
     }
-     
+
     protected void leaveZone( Long id, ZoneKey key ) {
         if( log.isDebugEnabled() ) {
             log.debug("ZONE: leave zone:" + id + "  " + key);
@@ -687,24 +687,24 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             // We can't remove the zone until it is both empty
             // and devoid of state.  We do that when we commit
             // the current block of state.
-            
+
             // But we can call any activation listeners to let them
-            // know it has been deactivated, I suppose.           
+            // know it has been deactivated, I suppose.
         }
     }
 
     public static void main( String... args ) {
         ZoneGrid grid = new ZoneGrid(32);
         ZoneManager zones = new ZoneManager(grid);
- 
+
         zones.beginUpdate(12345);
-    
+
         zones.updateEntity(1L, true, new Vec3d(0, 0, 0), new Quatd(), new AaBBox(10));
         zones.updateEntity(1L, true, new Vec3d(16, 16, 0), new Quatd(), new AaBBox(10));
         zones.updateEntity(1L, true, new Vec3d(32, 16, 0), new Quatd(), new AaBBox(10));
         zones.updateEntity(1L, true, new Vec3d(48, 16, 0), new Quatd(), new AaBBox(10));
-        
-    }    
+
+    }
 
     private ZoneKey createKey( int x, int y, int z ) {
         return new ZoneKey(grid, x, y, z);
@@ -718,7 +718,7 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         public void sendUpdate( Vec3d p, Quatd orientation );
         public void sendNoChange();
         public void leave( Long id );
-        
+
         public void setParent( Long parent );
         public Long getParent();
     }
@@ -735,39 +735,39 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
     protected final class OctZoneRange implements ZoneRange {
         Long id;
         Long parent;
-    
+
         Vec3i min;
         Vec3i max;
-        
+
         // Keys go like:
         //
         // min.y
         //       min.x  max.x
-        // min.z   0      1      
+        // min.z   0      1
         // max.z   3      2
         //
         // max.y
         //       min.x  max.x
-        // min.z   4      5      
+        // min.z   4      5
         // max.z   7      6
         //
-        ZoneKey[] keys = new ZoneKey[8];       
+        ZoneKey[] keys = new ZoneKey[8];
 
         // For purposes of handling 'no-change' updates, we will keep
         // the last state we received.  Added for no-updated support.
         Vec3d lastPosition;
-        Quatd lastOrientation;        
+        Quatd lastOrientation;
 
         public OctZoneRange( Long id ) {
             this.id = id;
         }
 
-        @Override    
+        @Override
         public Vec3i getMin() {
             return min;
         }
-        
-        @Override    
+
+        @Override
         public Vec3i getMax() {
             return max;
         }
@@ -775,18 +775,18 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         private boolean contains( int x, int y, int z ) {
             if( x < min.x || y < min.y || z < min.z )
                 return false;
-            if( x > max.x || y > max.y || z > max.z )            
+            if( x > max.x || y > max.y || z > max.z )
                 return false;
-            return true;  
+            return true;
         }
 
-        @Override    
+        @Override
         public void sendUpdate( Vec3d p, Quatd orientation ) {
             // They were cloned before giving them to us, safe
             // to keep them directly.  Added for no-updated support.
             lastPosition = p;
             lastOrientation = orientation;
-            
+
             if( keys[0] != null ) {
                 updateZoneObject(parent, id, p, orientation, keys[0]);
             }
@@ -800,34 +800,34 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                 updateZoneObject(parent, id, p, orientation, keys[3]);
             }
         }
-        
-        @Override    
+
+        @Override
         public void sendNoChange() {
             // Nothing special here... just resend the last data.
             // Someday maybe there is something optimized?  Don't
             // know what and doesn't matter today.  Added for no-change support.
             sendUpdate(lastPosition, lastOrientation);
         }
-        
-        @Override    
+
+        @Override
         public boolean setRange( Vec3i newMin, Vec3i newMax ) {
 
-            boolean result = true; 
+            boolean result = true;
             // Check the range to see if it's too large... this indicates that
             // the bounds is too big for the grid spacing.
             if( newMax.x - newMin.x > 1
-                || newMax.y - newMin.y > 1  
+                || newMax.y - newMin.y > 1
                 || newMax.z - newMin.z > 1 ) {
                 log.error("OctZoneRange: Range too big:" + newMin + " -> " + newMax);
                 result = false;
             }
-        
+
             ZoneKey[] oldKeys = keys.clone();
- 
+
             // We could avoid recreating keys if they are already
-            // set but the logic is tricky to get right and it's 
+            // set but the logic is tricky to get right and it's
             // not called very often anyway.
-            
+
             // Create all of the min.y keys first and we will
             // project them if max.y != min.y
             keys[0] = createKey(newMin.x, newMin.y, newMin.z);
@@ -835,17 +835,17 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                 keys[1] = createKey(newMax.x, newMin.y, newMin.z);
             else
                 keys[1] = null;
-            
+
             if( newMin.z != newMax.z )
                 keys[3] = createKey(newMin.x, newMin.y, newMax.z);
             else
                 keys[3] = null;
-            
+
             if( keys[1] != null && keys[3] != null )
                 keys[2] = createKey(newMax.x, newMin.y, newMax.z);
             else
                 keys[2] = null;
- 
+
             if( newMin.y != newMax.y ) {
                 // Need to project them up
                 keys[4] = keys[0] == null ? null : createKey(keys[0].x, newMax.y, keys[0].z);
@@ -859,102 +859,102 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                 keys[6] = null;
                 keys[7] = null;
             }
- 
+
             if( this.min == null ) {
                 // Then this is the first time and we can be optimized to
                 // just enter all of them.
-                this.min = newMin;            
+                this.min = newMin;
                 this.max = newMax;
                 enter(id);
-                return result;            
+                return result;
             }
- 
+
             enterMissing( id, newMin, newMax, keys );
- 
+
             Vec3i oldMin = this.min;
-            Vec3i oldMax = this.max;               
-            this.min = newMin;            
-            this.max = newMax;            
- 
+            Vec3i oldMax = this.max;
+            this.min = newMin;
+            this.max = newMax;
+
             leaveMissing( id, oldMin, oldMax, oldKeys );
-            
+
             return result;
-        } 
+        }
 
         private void enter( Long id ) {
- 
+
             for( ZoneKey key : keys ) {
                 if( key != null ) {
                     enterZone(id, key);
                 }
-            }       
+            }
         }
 
-        @Override    
+        @Override
         public void leave( Long id ) {
             if( log.isDebugEnabled() ) {
                 log.debug("OctZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
-            }        
+            }
             for( ZoneKey key : keys ) {
                 if( key != null ) {
                     leaveZone(id, key);
                 }
             }
-        }                
- 
+        }
+
         private void enterMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys ) {
- 
+
             // See which new zone keys are not in the current range
             for( ZoneKey key : zoneKeys ) {
                 if( key != null && !contains(key.x, key.y, key.z) ) {
-                    enterZone(id, key);   
+                    enterZone(id, key);
                 }
-            }       
+            }
         }
 
         private void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys ) {
             // See which old zone keys are not in the current range
             for( ZoneKey key : zoneKeys ) {
                 if( key != null && !contains(key.x, key.y, key.z) ) {
-                    leaveZone(id, key);   
+                    leaveZone(id, key);
                 }
             }
         }
-        
+
         public void setParent( Long parent ) {
             this.parent = parent;
         }
-        
+
         public Long getParent() {
             return parent;
         }
     }
-    
+
     protected final class DynamicZoneRange implements ZoneRange {
         Long id;
         Long parent;
-    
+
         Vec3i min;
         Vec3i max;
-        
+
         ZoneKey[] keys = new ZoneKey[0];
         int keyCount;
-        
+
         // For purposes of handling 'no-change' updates, we will keep
         // the last state we received.  Added for no-updated support.
         Vec3d lastPosition;
-        Quatd lastOrientation;        
+        Quatd lastOrientation;
 
         public DynamicZoneRange( Long id ) {
             this.id = id;
         }
 
-        @Override    
+        @Override
         public Vec3i getMin() {
             return min;
         }
-        
-        @Override    
+
+        @Override
         public Vec3i getMax() {
             return max;
         }
@@ -962,32 +962,32 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
         private boolean contains( int x, int y, int z ) {
             if( x < min.x || y < min.y || z < min.z )
                 return false;
-            if( x > max.x || y > max.y || z > max.z )            
+            if( x > max.x || y > max.y || z > max.z )
                 return false;
-            return true;  
+            return true;
         }
 
-        @Override    
+        @Override
         public void sendUpdate( Vec3d p, Quatd orientation ) {
             // They were cloned before giving them to us, safe
             // to keep them directly.  Added for no-updated support.
             lastPosition = p;
             lastOrientation = orientation;
- 
+
             for( int i = 0; i < keyCount; i++ ) {
                 updateZoneObject(parent, id, p, orientation, keys[i]);
             }
         }
-        
-        @Override    
+
+        @Override
         public void sendNoChange() {
             // Nothing special here... just resend the last data.
             // Someday maybe there is something optimized?  Don't
             // know what and doesn't matter today.  Added for no-change support.
             sendUpdate(lastPosition, lastOrientation);
         }
-        
-        @Override    
+
+        @Override
         public boolean setRange( Vec3i newMin, Vec3i newMax ) {
 
             ZoneKey[] oldKeys = keys.clone();
@@ -996,7 +996,7 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
             int xSize = newMax.x - newMin.x + 1;
             int ySize = newMax.y - newMin.y + 1;
             int zSize = newMax.z - newMin.z + 1;
-            
+
             int size = xSize * ySize * zSize;
             if( oldKeys.length < size || oldKeys.length > size * 2 ) {
                 // Grow or shrink it.  We shrink if our keys are less than
@@ -1006,7 +1006,7 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                 keys = new ZoneKey[size];
             }
             keyCount = size;
-            
+
             int index = 0;
             for( int i = 0; i < xSize; i++ ) {
                 for( int j = 0; j < ySize; j++ ) {
@@ -1016,77 +1016,77 @@ long nextFrameTime = System.nanoTime() + 1000000000L;
                     }
                 }
             }
-            
+
             if( this.min == null ) {
                 // Then this is the first time and we can be optimized to
                 // just enter all of them.
-                this.min = newMin;            
+                this.min = newMin;
                 this.max = newMax;
                 enter(id);
-                return true;            
+                return true;
             }
- 
-            enterMissing(id, newMin, newMax, keys, keyCount);
- 
-            Vec3i oldMin = this.min;
-            Vec3i oldMax = this.max;               
-            this.min = newMin;            
-            this.max = newMax;            
- 
-            leaveMissing(id, oldMin, oldMax, oldKeys, oldKeyCount);
-            
-            return true;
-        } 
 
-        private void enter( Long id ) { 
-            for( int i = 0; i < keyCount; i++ ) {
-                enterZone(id, keys[i]);
-            }       
+            enterMissing(id, newMin, newMax, keys, keyCount);
+
+            Vec3i oldMin = this.min;
+            Vec3i oldMax = this.max;
+            this.min = newMin;
+            this.max = newMax;
+
+            leaveMissing(id, oldMin, oldMax, oldKeys, oldKeyCount);
+
+            return true;
         }
 
-        @Override    
+        private void enter( Long id ) {
+            for( int i = 0; i < keyCount; i++ ) {
+                enterZone(id, keys[i]);
+            }
+        }
+
+        @Override
         public void leave( Long id ) {
             if( log.isDebugEnabled() ) {
                 log.debug("DynamicZoneRange.leave(" + id + ")  keys:" + Arrays.asList(keys));
-            }        
+            }
 if( (long)id != (long)this.id ) {
     log.warn("How would this ever happen: id:" + id + "  this.id:" + this.id);
-}            
+}
             for( int i = 0; i < keyCount; i++ ) {
                 leaveZone(id, keys[i]);
             }
-        }                
- 
+        }
+
         private void enterMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
-            
+
             int entered = 0;
- 
+
             // See which new zone keys are not in the current range
             for( int i = 0; i < count; i++ ) {
                 ZoneKey key = zoneKeys[i];
                 if( !contains(key.x, key.y, key.z) ) {
                     enterZone(id, key);
-                    entered++;   
+                    entered++;
                 }
             }
-            
+
             if( entered == count ) {
                 if( log.isTraceEnabled() ) {
                     log.trace("Probable warp has occurred, all zones are new.");
                 }
-            }       
+            }
         }
 
         private void leaveMissing( Long id, Vec3i minZone, Vec3i maxZone, ZoneKey[] zoneKeys, int count ) {
-            
+
             int left = 0;
-            
+
             // See which old zone keys are not in the current range
             for( int i = 0; i < count; i++ ) {
                 ZoneKey key = zoneKeys[i];
                 if( !contains(key.x, key.y, key.z) ) {
                     leaveZone(id, key);
-                    left++;   
+                    left++;
                 }
             }
 
@@ -1094,7 +1094,7 @@ if( (long)id != (long)this.id ) {
                 if( log.isTraceEnabled() ) {
                     log.trace("Probable warp has occurred, exited all old zones.");
                 }
-                // Keeps track of whether the object moved so far that the 
+                // Keeps track of whether the object moved so far that the
                 // old zone keys and new zone keys no longer overlap.  A lot of the
                 // state propagation relies on the fact that the state listener
                 // will still get notified because some of the zones overlap.  In
@@ -1110,22 +1110,22 @@ if( (long)id != (long)this.id ) {
                 }
             }
         }
-        
+
         public void setParent( Long parent ) {
             this.parent = parent;
         }
-        
+
         public Long getParent() {
             return parent;
         }
-        
+
         @Override
         public String toString() {
-            return "DynamicZoneRange[" + id + ", " + min + ", " + max + "]"; 
+            return "DynamicZoneRange[" + id + ", " + min + ", " + max + "]";
         }
-    }    
-    
+    }
+
 }
 
- 
+
 
