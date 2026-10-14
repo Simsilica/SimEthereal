@@ -11,7 +11,7 @@ group='com.simsilica'
 
 ext.jmeVersion = "3.1.0-stable"
 ext.slf4jVersion = '1.7.32'
-ext.simMathVersion = '1.4.0'
+ext.simMathVersion = '1.6.0'
 
 // Set this module's maven pom description
 publishing.publications.library(MavenPublication).pom {
@@ -35,3 +35,5 @@ compileJava.doLast {
     new File(destinationDir, 'sim-ethereal.build.date').text = buildDate
 }
 
+
+dependencies { testImplementation 'junit:junit:4.13.2' }

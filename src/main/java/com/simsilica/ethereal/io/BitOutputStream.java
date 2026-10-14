@@ -59,8 +59,10 @@ public class BitOutputStream implements AutoCloseable {
     }
  
     public void writeBits( int value, int count ) throws IOException {
-        if( count == 0 )
-            throw new IllegalArgumentException( "Cannot write 0 bits." );
+        if( count > 32 )
+            throw new IllegalArgumentException( "Bit count overflow:" + count );
+        if( count <= 0 )
+            throw new IllegalArgumentException( "Bit count must be positive:" + count );
 
         // Make sure the value is clean of extra high bits
         value = value & (0xffffffff >>> (32 - count));
@@ -88,8 +90,10 @@ public class BitOutputStream implements AutoCloseable {
     }
 
     public void writeLongBits( long value, int count ) throws IOException {
-        if( count == 0 )
-            throw new IllegalArgumentException( "Cannot write 0 bits." );
+        if( count > 64 )
+            throw new IllegalArgumentException( "Bit count overflow:" + count );
+        if( count <= 0 )
+            throw new IllegalArgumentException( "Bit count must be positive:" + count );
 
         // Make sure the value is clean of extra high bits
         value = value & (0xffffffffffffffffL >>> (64 - count));

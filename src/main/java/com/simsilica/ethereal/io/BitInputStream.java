@@ -55,8 +55,8 @@ public class BitInputStream implements AutoCloseable {
     }
  
     public long readLongBits( int count ) throws IOException {
-        if( count == 0 )
-            throw new IllegalArgumentException( "Cannot read 0 bits." );
+        if( count <= 0 )
+            throw new IllegalArgumentException( "Bit count must be positive:" + count );
     
         if( count > 64 )
             throw new IllegalArgumentException( "Bit count overflow:" + count );
@@ -103,8 +103,8 @@ public class BitInputStream implements AutoCloseable {
     }
  
     public int readBits( int count ) throws IOException {
-        if( count == 0 )
-            throw new IllegalArgumentException( "Cannot read 0 bits." );
+        if( count <= 0 )
+            throw new IllegalArgumentException( "Bit count must be positive:" + count );
             
         if( count > 32 )
             throw new IllegalArgumentException( "Bit count overflow:" + count );
